@@ -1,9 +1,11 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Package, FileText, Settings, LogOut, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { ProductList } from "@/components/products/ProductList";
+
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -82,8 +84,9 @@ function Dashboard() {
             </div>
           </header>
           <div className="p-8">
-            <p className="text-[#FAFAFA]/60 font-light">Bem-vindo ao Roteiro TikTok Shop. Comece adicionando seus produtos.</p>
+            <ProductList />
           </div>
+
         </main>
       </div>
     </SidebarProvider>
