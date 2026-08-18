@@ -54,18 +54,19 @@ function RoteirosView() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <Button 
           variant="ghost" 
+          size="sm"
           onClick={() => navigate({ to: "/dashboard" as any })}
-          className="text-[#FAFAFA]/60 hover:text-[#FAFAFA] hover:bg-[#D4AF37]/10"
+          className="text-[#FAFAFA]/60 hover:text-[#FAFAFA] hover:bg-[#D4AF37]/10 -ml-2"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Voltar
         </Button>
-        <h2 className="text-[#D4AF37] text-2xl font-light">Roteiros Gerados</h2>
-        <div className="w-20" /> {/* Spacer */}
+        <h2 className="text-[#D4AF37] text-xl md:text-2xl font-light">Roteiros Gerados</h2>
+        <div className="hidden sm:block w-20" /> {/* Spacer */}
       </div>
 
       <div className="grid gap-6">
