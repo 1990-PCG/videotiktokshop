@@ -1,10 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Outlet } from "@tanstack/react-router";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Package, FileText, Settings, LogOut, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { ProductList } from "@/components/products/ProductList";
 
 
 export const Route = createFileRoute("/dashboard")({
@@ -42,13 +41,19 @@ function Dashboard() {
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton className="text-[#FAFAFA] hover:bg-[#D4AF37]/10">
+                    <SidebarMenuButton 
+                      onClick={() => navigate({ to: "/dashboard" as any })}
+                      className="text-[#FAFAFA] hover:bg-[#D4AF37]/10"
+                    >
                       <Package className="mr-2 h-4 w-4" />
                       <span>Meus Produtos</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton className="text-[#FAFAFA] hover:bg-[#D4AF37]/10">
+                    <SidebarMenuButton 
+                      className="text-[#FAFAFA] hover:bg-[#D4AF37]/10 opacity-50 cursor-not-allowed"
+                      disabled
+                    >
                       <FileText className="mr-2 h-4 w-4" />
                       <span>Roteiros Gerados</span>
                     </SidebarMenuButton>
@@ -84,7 +89,7 @@ function Dashboard() {
             </div>
           </header>
           <div className="p-8">
-            <ProductList />
+            <Outlet />
           </div>
 
         </main>
