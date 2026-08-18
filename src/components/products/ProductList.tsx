@@ -50,9 +50,9 @@ export function ProductList() {
       
       toast.success("Roteiros gerados com sucesso!");
       navigate({ 
-        to: "/dashboard/roteiros/$productId" as any, 
+        to: "/dashboard/roteiros/$productId", 
         params: { productId: product.id } 
-      });
+      } as any);
     } catch (error: any) {
       console.error(error);
       toast.error("Erro ao gerar roteiros. Tente novamente.");

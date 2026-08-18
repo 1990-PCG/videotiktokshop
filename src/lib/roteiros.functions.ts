@@ -32,7 +32,7 @@ Responda APENAS em JSON válido, neste formato, sem nenhum texto antes ou depois
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.LOVABLE_API_KEY}`,
+          "Authorization": `Bearer ${process.env['LOVABLE_API_KEY']}`,
         },
         body: JSON.stringify({
           model: "claude-3-5-sonnet-20241022",
