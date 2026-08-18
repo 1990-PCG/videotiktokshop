@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      produtos: {
+        Row: {
+          categoria: string | null
+          created_at: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          preco: number | null
+          user_id: string
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          preco?: number | null
+          user_id: string
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          preco?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      roteiros: {
+        Row: {
+          conteudo: Json
+          created_at: string | null
+          id: string
+          produto_id: string
+          user_id: string
+        }
+        Insert: {
+          conteudo: Json
+          created_at?: string | null
+          id?: string
+          produto_id: string
+          user_id: string
+        }
+        Update: {
+          conteudo?: Json
+          created_at?: string | null
+          id?: string
+          produto_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roteiros_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
