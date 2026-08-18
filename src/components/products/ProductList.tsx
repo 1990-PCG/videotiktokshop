@@ -20,7 +20,7 @@ export function ProductList() {
   });
 
   const { mutate: removeProduct } = useMutation({
-    mutationFn: deleteProductFn,
+    mutationFn: (id: string) => deleteProductFn({ data: { id } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       toast.success("Produto excluído!");
@@ -87,7 +87,7 @@ export function ProductList() {
                   size="icon" 
                   onClick={() => {
                     if (confirm("Tem certeza que deseja excluir este produto?")) {
-                      removeProduct({ id: product.id });
+                      removeProduct(product.id);
                     }
                   }}
                   className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10 h-8 w-8"

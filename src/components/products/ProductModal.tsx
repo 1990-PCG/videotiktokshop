@@ -35,9 +35,11 @@ import { toast } from "sonner"
 const formSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
   categoria: z.string().min(1, "Categoria é obrigatória"),
-  preco: z.string().optional().transform((val) => val ? parseFloat(val.replace(/[^\d.,]/g, "").replace(",", ".")) : null),
-  descricao: z.string().max(500, "Descrição deve ter no máximo 500 caracteres").optional(),
+  preco: z.string().optional().or(z.literal("")),
+  descricao: z.string().max(500, "Descrição deve ter no máximo 500 caracteres").optional().or(z.literal("")),
 })
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface ProductModalProps {
   open: boolean
@@ -48,18 +50,31 @@ export function ProductModal({ open, onOpenChange }: ProductModalProps) {
   const queryClient = useQueryClient()
   const createProductFn = useServerFn(createProduct)
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       nome: "",
       categoria: "",
-      preco: "" as any,
+      preco: "",
       descricao: "",
     },
   })
 
   const { mutate, isPending } = useMutation({
-    mutationFn: createProductFn,
+    mutationFn: (values: FormValues) => {
+      const precoNumber = values.preco 
+        ? parseFloat(values.preco.replace(/[^\d.,]/g, "").replace(",", ".")) 
+        : null;
+      
+      return createProductFn({
+        data: {
+          nome: values.nome,
+          categoria: values.categoria,
+          preco: precoNumber,
+          descricao: values.descricao || null,
+        }
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] })
       toast.success("Produto criado com sucesso!")
@@ -71,8 +86,8 @@ export function ProductModal({ open, onOpenChange }: ProductModalProps) {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    mutate(values as any)
+  function onSubmit(values: FormValues) {
+    mutate(values)
   }
 
   return (
