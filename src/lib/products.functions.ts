@@ -4,9 +4,9 @@ import { z } from "zod";
 
 const productSchema = z.object({
   nome: z.string().min(1, "Nome é obrigatório"),
-  categoria: z.string().optional(),
-  preco: z.number().optional(),
-  descricao: z.string().max(500, "Descrição muito longa").optional(),
+  categoria: z.string().nullable().optional(),
+  preco: z.number().nullable().optional(),
+  descricao: z.string().max(500, "Descrição muito longa").nullable().optional(),
 });
 
 export const getProducts = createServerFn({ method: "GET" })
@@ -28,7 +28,10 @@ export const createProduct = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("produtos")
       .insert({
-        ...data,
+        nome: data.nome,
+        categoria: data.categoria ?? null,
+        preco: data.preco ?? null,
+        descricao: data.descricao ?? null,
         user_id: context.userId,
       });
 
