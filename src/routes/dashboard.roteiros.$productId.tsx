@@ -14,7 +14,7 @@ export const Route = createFileRoute("/dashboard/roteiros/$productId")({
 });
 
 function RoteirosView() {
-  const { productId } = useParams({ from: "/dashboard/roteiros/$productId" });
+  const { productId } = useParams({ from: "/dashboard/roteiros/$productId" as any });
   const getScriptsFn = useServerFn(getScriptsByProduct);
   const navigate = useNavigate();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
