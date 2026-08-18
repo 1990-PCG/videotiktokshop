@@ -147,6 +147,36 @@ export const getAllScriptsGrouped = createServerFn({ method: "GET" })
     return data;
   });
 
+export const getDashboardStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { count: productsCount, error: pError } = await context.supabase
+      .from("produtos")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", context.userId);
+
+    if (pError) throw pError;
+
+    const { data: roteiros, error: rError } = await context.supabase
+      .from("roteiros")
+      .select("conteudo")
+      .eq("user_id", context.userId);
+
+    if (rError) throw rError;
+
+    let scriptsCount = 0;
+    roteiros?.forEach((r: any) => {
+      if (Array.isArray(r.conteudo)) {
+        scriptsCount += r.conteudo.length;
+      }
+    });
+
+    return {
+      productsCount: productsCount || 0,
+      scriptsCount
+    };
+  });
+
 export const deleteIndividualScript = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ 

@@ -41,5 +41,10 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    @apply antialiased selection:bg-[#D4AF37]/30;
+  }
+
+  input, textarea, select {
+    @apply focus:ring-1 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all;
   }
 }
