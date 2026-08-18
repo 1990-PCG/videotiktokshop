@@ -51,37 +51,65 @@ Responda APENAS em JSON válido, neste formato, sem nenhum texto antes ou depois
       const aiResult = await response.json();
       const content = aiResult.choices[0].message.content;
       
-      // Attempt to parse JSON from AI response
-      let scripts;
+      let newScripts;
       try {
-        scripts = JSON.parse(content);
-        // Ensure it's an array if AI wrapped it in an object
-        if (!Array.isArray(scripts) && scripts.roteiros) {
-          scripts = scripts.roteiros;
+        newScripts = JSON.parse(content);
+        if (!Array.isArray(newScripts) && newScripts.roteiros) {
+          newScripts = newScripts.roteiros;
         }
       } catch (e) {
-        // Fallback for cases where JSON might be wrapped in markdown
         const jsonMatch = content.match(/\[[\s\S]*\]/);
         if (jsonMatch) {
-          scripts = JSON.parse(jsonMatch[0]);
+          newScripts = JSON.parse(jsonMatch[0]);
         } else {
           throw new Error("Failed to parse scripts from AI response");
         }
       }
 
-      const { data: insertedData, error: dbError } = await context.supabase
+      // Add a unique ID to each script for individual deletion
+      newScripts = newScripts.map((s: any) => ({
+        ...s,
+        id: crypto.randomUUID()
+      }));
+
+      // Check if scripts already exist for this product
+      const { data: existing, error: fetchError } = await context.supabase
         .from("roteiros")
-        .insert({
-          produto_id: data.productId,
-          user_id: context.userId,
-          conteudo: scripts
-        })
-        .select()
-        .single();
+        .select("*")
+        .eq("produto_id", data.productId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
 
-      if (dbError) throw dbError;
+      if (fetchError) throw fetchError;
 
-      return { success: true, roteiroId: insertedData.id };
+      let result;
+      if (existing) {
+        const updatedConteudo = [...(existing.conteudo as any[]), ...newScripts];
+        const { data: updated, error: updateError } = await context.supabase
+          .from("roteiros")
+          .update({ conteudo: updatedConteudo })
+          .eq("id", existing.id)
+          .select()
+          .single();
+        
+        if (updateError) throw updateError;
+        result = updated;
+      } else {
+        const { data: inserted, error: insertError } = await context.supabase
+          .from("roteiros")
+          .insert({
+            produto_id: data.productId,
+            user_id: context.userId,
+            conteudo: newScripts
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        result = inserted;
+      }
+
+      return { success: true, roteiroId: result.id };
     } catch (error: any) {
       console.error("Error in generateScripts:", error);
       throw error;
@@ -96,9 +124,66 @@ export const getScriptsByProduct = createServerFn({ method: "GET" })
       .from("roteiros")
       .select("*")
       .eq("produto_id", data.productId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .eq("user_id", context.userId)
+      .maybeSingle();
 
     if (error) throw error;
-    return roteiros?.[0] || null;
+    return roteiros || null;
+  });
+
+export const getAllScriptsGrouped = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("roteiros")
+      .select(`
+        *,
+        produto:produtos(*)
+      `)
+      .eq("user_id", context.userId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data;
+  });
+
+export const deleteIndividualScript = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ 
+    roteiroRowId: z.string().uuid(),
+    scriptId: z.string()
+  }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { data: existing, error: fetchError } = await context.supabase
+      .from("roteiros")
+      .select("conteudo")
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const currentScripts = existing.conteudo as any[];
+    const updatedScripts = currentScripts.filter((s: any) => s.id !== data.scriptId);
+
+    if (updatedScripts.length === 0) {
+      // If no scripts left, delete the row
+      const { error: deleteError } = await context.supabase
+        .from("roteiros")
+        .delete()
+        .eq("id", data.roteiroRowId)
+        .eq("user_id", context.userId);
+      
+      if (deleteError) throw deleteError;
+    } else {
+      const { error: updateError } = await context.supabase
+        .from("roteiros")
+        .update({ conteudo: updatedScripts })
+        .eq("id", data.roteiroRowId)
+        .eq("user_id", context.userId);
+      
+      if (updateError) throw updateError;
+    }
+
+    return { success: true };
   });
