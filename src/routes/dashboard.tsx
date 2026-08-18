@@ -51,8 +51,8 @@ function Dashboard() {
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton 
-                      className="text-[#FAFAFA] hover:bg-[#D4AF37]/10 opacity-50 cursor-not-allowed"
-                      disabled
+                      onClick={() => navigate({ to: "/dashboard/roteiros" as any })}
+                      className="text-[#FAFAFA] hover:bg-[#D4AF37]/10"
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       <span>Roteiros Gerados</span>

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
+import { Route as DashboardRoteirosIndexRouteImport } from './routes/dashboard.roteiros.index'
 import { Route as DashboardRoteirosProductIdRouteImport } from './routes/dashboard.roteiros.$productId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const DashboardIndexRoute = DashboardIndexRouteImport.update({
   path: '/',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardRoteirosIndexRoute = DashboardRoteirosIndexRouteImport.update({
+  id: '/roteiros/',
+  path: '/roteiros/',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardRoteirosProductIdRoute =
   DashboardRoteirosProductIdRouteImport.update({
     id: '/roteiros/$productId',
@@ -41,11 +47,13 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
+  '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
+  '/dashboard/roteiros': typeof DashboardRoteirosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,19 +61,29 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
+  '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dashboard' | '/dashboard/' | '/dashboard/roteiros/$productId'
+    | '/'
+    | '/dashboard'
+    | '/dashboard/'
+    | '/dashboard/roteiros/$productId'
+    | '/dashboard/roteiros/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/dashboard/roteiros/$productId'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/dashboard/roteiros/$productId'
+    | '/dashboard/roteiros'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
+    | '/dashboard/roteiros/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -96,6 +114,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/roteiros/': {
+      id: '/dashboard/roteiros/'
+      path: '/roteiros'
+      fullPath: '/dashboard/roteiros/'
+      preLoaderRoute: typeof DashboardRoteirosIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/roteiros/$productId': {
       id: '/dashboard/roteiros/$productId'
       path: '/roteiros/$productId'
@@ -109,11 +134,13 @@ declare module '@tanstack/react-router' {
 interface DashboardRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardRoteirosProductIdRoute: typeof DashboardRoteirosProductIdRoute
+  DashboardRoteirosIndexRoute: typeof DashboardRoteirosIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardRoteirosProductIdRoute: DashboardRoteirosProductIdRoute,
+  DashboardRoteirosIndexRoute: DashboardRoteirosIndexRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
