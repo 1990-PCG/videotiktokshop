@@ -89,11 +89,11 @@ export function ProductList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-[#FAFAFA] text-lg font-light">Seus Produtos ({products.length})</h2>
         <Button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90"
+          className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90 w-full sm:w-auto"
         >
           <Plus className="mr-2 h-4 w-4" />
           Novo Produto

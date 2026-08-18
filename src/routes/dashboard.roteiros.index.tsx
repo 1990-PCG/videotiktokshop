@@ -92,20 +92,20 @@ function RoteirosIndexView() {
           <AccordionItem 
             key={roteiro.id} 
             value={roteiro.id}
-            className="border border-[#D4AF37]/20 bg-[#121212] rounded-lg px-6 overflow-hidden"
+            className="border border-[#D4AF37]/20 bg-[#121212] rounded-lg px-4 md:px-6 overflow-hidden"
           >
-            <AccordionTrigger className="hover:no-underline py-6">
-              <div className="flex flex-col items-start text-left">
+            <AccordionTrigger className="hover:no-underline py-4 md:py-6">
+              <div className="flex flex-col items-start text-left max-w-[80%]">
                 <span className="text-[10px] uppercase tracking-widest text-[#D4AF37]/60">
                   {roteiro.produto?.categoria || "Sem Categoria"}
                 </span>
-                <span className="text-[#FAFAFA] text-lg font-light">
+                <span className="text-[#FAFAFA] text-base md:text-lg font-light truncate w-full">
                   {roteiro.produto?.nome || "Produto Excluído"}
                 </span>
               </div>
             </AccordionTrigger>
-            <AccordionContent className="pb-8 pt-2">
-              <div className="flex justify-between items-center mb-6">
+            <AccordionContent className="pb-6 md:pb-8 pt-2">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <p className="text-[#FAFAFA]/60 text-sm">
                   {Array.isArray(roteiro.conteudo) ? roteiro.conteudo.length : 0} roteiros disponíveis
                 </p>
@@ -114,7 +114,7 @@ function RoteirosIndexView() {
                   variant="outline"
                   disabled={generatingId === roteiro.id || !roteiro.produto}
                   onClick={() => handleGenerateMore(roteiro)}
-                  className="border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                  className="w-full sm:w-auto border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
                 >
                   {generatingId === roteiro.id ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
