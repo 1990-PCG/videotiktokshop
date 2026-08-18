@@ -1,18 +1,23 @@
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProducts, deleteProduct } from "@/lib/products.functions";
+import { generateScripts } from "@/lib/roteiros.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Trash2, FileText, Plus } from "lucide-react";
+import { Package, Trash2, FileText, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ProductModal } from "./ProductModal";
+import { useNavigate } from "@tanstack/react-router";
 
 export function ProductList() {
   const queryClient = useQueryClient();
   const getProductsFn = useServerFn(getProducts);
   const deleteProductFn = useServerFn(deleteProduct);
+  const generateScriptsFn = useServerFn(generateScripts);
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -29,6 +34,32 @@ export function ProductList() {
       toast.error("Erro ao excluir: " + error.message);
     },
   });
+
+  const handleGenerateScripts = async (product: any) => {
+    setGeneratingId(product.id);
+    try {
+      const result = await generateScriptsFn({
+        data: {
+          productId: product.id,
+          nome: product.nome,
+          categoria: product.categoria,
+          preco: product.preco,
+          descricao: product.descricao,
+        }
+      });
+      
+      toast.success("Roteiros gerados com sucesso!");
+      navigate({ 
+        to: "/dashboard/roteiros/$productId", 
+        params: { productId: product.id } 
+      } as any);
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Erro ao gerar roteiros. Tente novamente.");
+    } finally {
+      setGeneratingId(null);
+    }
+  };
 
   if (isLoading) {
     return <div className="text-[#D4AF37] animate-pulse">Carregando produtos...</div>;
@@ -111,10 +142,21 @@ export function ProductList() {
             <CardFooter>
               <Button 
                 variant="outline" 
+                disabled={generatingId === product.id}
+                onClick={() => handleGenerateScripts(product)}
                 className="w-full border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-sm font-light"
               >
-                <FileText className="mr-2 h-4 w-4" />
-                Gerar Roteiros
+                {generatingId === product.id ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Gerando...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Gerar Roteiros
+                  </>
+                )}
               </Button>
             </CardFooter>
           </Card>
