@@ -16,7 +16,7 @@ function Dashboard() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) {
-        navigate({ to: "/" });
+        navigate({ to: "/" as any });
       } else {
         setUser(user);
       }
@@ -25,7 +25,7 @@ function Dashboard() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate({ to: "/" });
+    navigate({ to: "/" as any });
   };
 
   if (!user) return null;

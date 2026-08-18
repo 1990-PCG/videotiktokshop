@@ -25,7 +25,7 @@ function LandingPage() {
       } else {
         await supabase.auth.signInWithPassword({ email, password });
       }
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/dashboard" as any });
     } catch (error) {
       console.error(error);
     } finally {
