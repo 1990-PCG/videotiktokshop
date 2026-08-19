@@ -18,6 +18,7 @@ import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as DashboardRoteirosIndexRouteImport } from './routes/dashboard.roteiros.index'
 import { Route as DashboardRoteirosProductIdRouteImport } from './routes/dashboard.roteiros.$productId'
+import { Route as DashboardVideosIndexRouteImport } from './routes/dashboard.videos.index'
 import { Route as DashboardRecordRoteiroRowIdScriptIdRouteImport } from './routes/dashboard.record.$roteiroRowId.$scriptId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -66,6 +67,11 @@ const DashboardRoteirosProductIdRoute =
     path: '/roteiros/$productId',
     getParentRoute: () => DashboardRoute,
   } as any)
+const DashboardVideosIndexRoute = DashboardVideosIndexRouteImport.update({
+  id: '/videos/',
+  path: '/videos/',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardRecordRoteiroRowIdScriptIdRoute =
   DashboardRecordRoteiroRowIdScriptIdRouteImport.update({
     id: '/record/$roteiroRowId/$scriptId',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
+  '/dashboard/videos/': typeof DashboardVideosIndexRoute
   '/dashboard/record/$roteiroRowId/$scriptId': typeof DashboardRecordRoteiroRowIdScriptIdRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros': typeof DashboardRoteirosIndexRoute
+  '/dashboard/videos': typeof DashboardVideosIndexRoute
   '/dashboard/record/$roteiroRowId/$scriptId': typeof DashboardRecordRoteiroRowIdScriptIdRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
+  '/dashboard/videos/': typeof DashboardVideosIndexRoute
   '/dashboard/record/$roteiroRowId/$scriptId': typeof DashboardRecordRoteiroRowIdScriptIdRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros/'
+    | '/dashboard/videos/'
     | '/dashboard/record/$roteiroRowId/$scriptId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros'
+    | '/dashboard/videos'
     | '/dashboard/record/$roteiroRowId/$scriptId'
   id:
     | '__root__'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros/'
+    | '/dashboard/videos/'
     | '/dashboard/record/$roteiroRowId/$scriptId'
   fileRoutesById: FileRoutesById
 }
@@ -216,6 +228,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRoteirosProductIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/videos/': {
+      id: '/dashboard/videos/'
+      path: '/videos'
+      fullPath: '/dashboard/videos/'
+      preLoaderRoute: typeof DashboardVideosIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/record/$roteiroRowId/$scriptId': {
       id: '/dashboard/record/$roteiroRowId/$scriptId'
       path: '/record/$roteiroRowId/$scriptId'
@@ -243,6 +262,7 @@ interface DashboardRouteChildren {
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardRoteirosProductIdRoute: typeof DashboardRoteirosProductIdRoute
   DashboardRoteirosIndexRoute: typeof DashboardRoteirosIndexRoute
+  DashboardVideosIndexRoute: typeof DashboardVideosIndexRoute
   DashboardRecordRoteiroRowIdScriptIdRoute: typeof DashboardRecordRoteiroRowIdScriptIdRoute
 }
 
@@ -251,6 +271,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardRoteirosProductIdRoute: DashboardRoteirosProductIdRoute,
   DashboardRoteirosIndexRoute: DashboardRoteirosIndexRoute,
+  DashboardVideosIndexRoute: DashboardVideosIndexRoute,
   DashboardRecordRoteiroRowIdScriptIdRoute:
     DashboardRecordRoteiroRowIdScriptIdRoute,
 }
