@@ -59,6 +59,15 @@ function Dashboard() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      onClick={() => navigate({ to: "/dashboard/profile" as any })}
+                      className="text-[#FAFAFA] hover:bg-[#D4AF37]/10"
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Perfil</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
                     <SidebarMenuButton className="text-[#FAFAFA] hover:bg-[#D4AF37]/10">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Configurações</span>
