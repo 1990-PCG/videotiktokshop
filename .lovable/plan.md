@@ -5,54 +5,57 @@ Add a CRM for managing customers (contacts) with script/video history, and upgra
 ## User Review Required
 
 > [!IMPORTANT]
-> The "Payment Status" and "Value" fields in the Admin view will be initialized as placeholders (e.g., "Paid" / "bash.00") since there is no existing payment integration. Would you like me to create a `user_payments` table to store this data?
+> The "Payment Status" and "Value" fields in the Admin view will be initialized as placeholders (e.g., "Paid" / "$0.00") since there is no existing payment integration. I will create a \`user_billing\` table to store this mock data so it can be viewed and edited in the Admin panel.
 
-- **Admin User View**: Confirm that "Payment in day" should be a manual field or if it should eventually link to a billing system.
-- **Customer CRM**: Confirm if "Customer" (Cliente) is distinct from "User" (Usuário). I assume "Clientes" are external contacts created by the app users.
+- **Admin User View**: I will implement the "Payment in day" and "Value" columns as requested. Since there's no payment gateway yet, these will be editable by an admin or defaulted to "Pending".
+- **Customer CRM**: I will add a "Clientes" tab to the dashboard sidebar.
 
 ## Proposed Changes
 
 ### Database Schema (Supabase)
 
-- **Create `clientes` table**:
-    - `id` (uuid, PK)
-    - `user_id` (uuid, FK to auth.users) - owner of the contact
-    - `nome` (text)
-    - `email` (text)
-    - `telefone` (text)
-    - `created_at` (timestamptz)
-- **Create `cliente_historico` table** (to track sent content):
-    - `id` (uuid, PK)
-    - `cliente_id` (uuid, FK to clientes)
-    - `roteiro_id` (uuid, FK to roteiros)
-    - `tipo` (text: 'video' | 'roteiro')
-    - `created_at` (timestamptz)
-- **RLS Policies**: Standard owner-only access for users.
+- **Create \`clientes\` table**:
+    - \`id\` (uuid, PK)
+    - \`user_id\` (uuid, FK to auth.users) - owner of the contact
+    - \`nome\` (text)
+    - \`email\` (text)
+    - \`telefone\` (text)
+    - \`created_at\` (timestamptz)
+- **Create \`cliente_historico\` table**:
+    - \`id\` (uuid, PK)
+    - \`cliente_id\` (uuid, FK to clientes, cascade delete)
+    - \`roteiro_id\` (uuid, FK to roteiros, cascade delete)
+    - \`created_at\` (timestamptz)
+- **Create \`user_billing\` table** (for admin view):
+    - \`id\` (uuid, PK)
+    - \`user_id\` (uuid, FK to auth.users, unique)
+    - \`pagamento_em_dia\` (boolean, default true)
+    - \`valor\` (numeric, default 0)
+- **RLS Policies**: Standard owner-only access for \`clientes\` and \`cliente_historico\`. \`user_billing\` readable by owner, all by admin.
 
 ### Server Functions
 
 - **src/lib/customers.functions.ts**:
-    - `getCustomers`, `createCustomer`, `deleteCustomer`, `updateCustomer`.
-    - `linkContentToCustomer`: Link a script or video to a customer.
+    - CRUD for \`clientes\`.
+    - \`getCustomerHistory(clienteId)\`: Fetches roteiros linked to a customer.
+    - \`linkScriptToCustomer(clienteId, scriptId)\`: Adds entry to history.
 - **Update src/lib/admin.functions.ts**:
-    - New `getAdminUsersStats`: Returns a list of all users with counts for products, scripts, videos (total/edited), and mock payment status.
+    - \`getAdminUsersStats\`: Aggregates stats per user (products, scripts, videos, edited videos, billing).
 
 ### UI Components
 
 - **src/routes/dashboard.customers.index.tsx**: New CRM page.
-    - List of contacts with search.
+    - List of contacts.
     - Modal to create/edit contacts.
-    - Detail view showing "History of sent videos and scripts".
+    - "History" section for each contact showing linked roteiros.
 - **src/routes/admin/index.tsx**:
-    - Replace "Total products and scripts" card with a "Users" table/grid.
-    - Columns: User ID, Products Count, Scripts Count, Videos Count, Edited Videos Count, Payment Status, Value.
-    - Clickable "Products Count" that opens the existing detailed product view for that specific user.
+    - Replace central card with "Users" table.
+    - Columns: ID, Products, Scripts, Videos, Edited, Payment, Value.
+    - Clicking product count filters/shows products for that user.
 - **Navigation**:
-    - Add "Clientes" to the Sidebar in `src/routes/dashboard.tsx`.
+    - Add "Clientes" to Sidebar in \`src/routes/dashboard.tsx\`.
 
 ## Technical Details
 
-- **Admin View Refactor**: Use TanStack Table or a clean Shadcn Table for the user list.
-- **Admin Stats Aggregation**: The server function will use PostgreSQL aggregations (count/group by user_id) across all core tables.
-- **Video Metadata**: Edited videos count will filter `roteiros` where the `conteudo` JSON contains `video_settings`.
-
+- **Edited Videos Count**: Calculated by checking if \`roteiros.conteudo\` contains \`video_settings\`.
+- **Total Videos**: Count of \`roteiros\` where \`conteudo->>'video_url'\` is not null.
