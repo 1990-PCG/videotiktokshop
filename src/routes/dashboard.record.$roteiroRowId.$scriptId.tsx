@@ -100,15 +100,17 @@ function RecordView() {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: { signedUrl }, error: urlError } = await supabase.storage
         .from("videos")
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10); // 10 years signed URL
+
+      if (urlError) throw urlError;
 
       await uploadVideoFn({
         data: {
           roteiroRowId,
           scriptId,
-          videoUrl: publicUrl
+          videoUrl: signedUrl
         }
       });
 
