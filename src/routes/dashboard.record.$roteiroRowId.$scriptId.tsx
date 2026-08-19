@@ -20,9 +20,11 @@ function RecordView() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [chunks, setChunks] = useState<Blob[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
@@ -178,11 +180,29 @@ function RecordView() {
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center">
-            {!stream && (
-              <Button onClick={startStream} className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90">
-                <Video className="h-4 w-4 mr-2" />
-                Ativar Câmera
-              </Button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileSelect} 
+              accept="video/*" 
+              className="hidden" 
+            />
+
+            {!stream && !recordedUrl && (
+              <>
+                <Button onClick={startStream} className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90">
+                  <Video className="h-4 w-4 mr-2" />
+                  Ativar Câmera
+                </Button>
+                <Button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  variant="outline" 
+                  className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Subir Vídeo
+                </Button>
+              </>
             )}
             
             {stream && !isRecording && !recordedUrl && (
@@ -201,8 +221,15 @@ function RecordView() {
 
             {recordedUrl && !isRecording && (
               <>
-                <Button onClick={() => setRecordedUrl(null)} variant="outline" className="border-[#D4AF37] text-[#D4AF37]">
-                  Gravar Novamente
+                <Button 
+                  onClick={() => {
+                    setRecordedUrl(null);
+                    setSelectedFile(null);
+                  }} 
+                  variant="outline" 
+                  className="border-[#D4AF37] text-[#D4AF37]"
+                >
+                  Gravar/Subir Novamente
                 </Button>
                 <Button 
                   onClick={handleUpload} 
