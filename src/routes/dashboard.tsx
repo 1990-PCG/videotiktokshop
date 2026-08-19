@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Outlet } from "@tanstack/react-router";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, FileText, Settings, LogOut, User, Menu, ShieldCheck } from "lucide-react";
+import { Package, FileText, Settings, LogOut, User, Menu, ShieldCheck, Video } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { checkIsAdmin } from "@/lib/admin.functions";
@@ -66,6 +66,15 @@ function Dashboard() {
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       <span>Roteiros Gerados</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      onClick={() => navigate({ to: "/dashboard/videos" as any })}
+                      className="text-[#FAFAFA] hover:bg-[#D4AF37]/10"
+                    >
+                      <Video className="mr-2 h-4 w-4" />
+                      <span>Meus Vídeos</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
