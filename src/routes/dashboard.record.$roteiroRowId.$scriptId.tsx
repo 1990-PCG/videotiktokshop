@@ -8,7 +8,7 @@ import { Video, StopCircle, Upload, ArrowLeft, Loader2, Play } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/dashboard/record/")({
+export const Route = createFileRoute("/dashboard/record/$roteiroRowId/$scriptId")({
   component: RecordView,
 });
 
