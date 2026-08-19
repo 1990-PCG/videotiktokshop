@@ -15,6 +15,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
+import { Route as DashboardRecordRouteImport } from './routes/dashboard.record'
 import { Route as DashboardRoteirosIndexRouteImport } from './routes/dashboard.roteiros.index'
 import { Route as DashboardRoteirosProductIdRouteImport } from './routes/dashboard.roteiros.$productId'
 
@@ -48,6 +49,11 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardRecordRoute = DashboardRecordRouteImport.update({
+  id: '/record',
+  path: '/record',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardRoteirosIndexRoute = DashboardRoteirosIndexRouteImport.update({
   id: '/roteiros/',
   path: '/roteiros/',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/record': typeof DashboardRecordRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/record': typeof DashboardRecordRoute
   '/admin': typeof AdminIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/dashboard/record': typeof DashboardRecordRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/profile'
+    | '/dashboard/record'
     | '/admin/'
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/dashboard/profile'
+    | '/dashboard/record'
     | '/admin'
     | '/dashboard'
     | '/dashboard/roteiros/$productId'
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/profile'
+    | '/dashboard/record'
     | '/admin/'
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
@@ -170,6 +182,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/record': {
+      id: '/dashboard/record'
+      path: '/record'
+      fullPath: '/dashboard/record'
+      preLoaderRoute: typeof DashboardRecordRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/roteiros/': {
       id: '/dashboard/roteiros/'
       path: '/roteiros'
@@ -199,6 +218,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface DashboardRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
+  DashboardRecordRoute: typeof DashboardRecordRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardRoteirosProductIdRoute: typeof DashboardRoteirosProductIdRoute
   DashboardRoteirosIndexRoute: typeof DashboardRoteirosIndexRoute
@@ -206,6 +226,7 @@ interface DashboardRouteChildren {
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardProfileRoute: DashboardProfileRoute,
+  DashboardRecordRoute: DashboardRecordRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardRoteirosProductIdRoute: DashboardRoteirosProductIdRoute,
   DashboardRoteirosIndexRoute: DashboardRoteirosIndexRoute,
