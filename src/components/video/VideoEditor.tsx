@@ -87,15 +87,17 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
   };
 
   const handleTrimChange = (value: number[]) => {
+    const startTime = value[0] ?? 0;
+    const endTime = value[1] ?? duration;
     setSettings(s => ({
       ...s,
-      startTime: value[0],
-      endTime: value[1]
+      startTime,
+      endTime
     }));
   };
 
   const handleVolumeChange = (value: number[]) => {
-    const vol = value[0];
+    const vol = value[0] ?? 1;
     setSettings(s => ({ ...s, volume: vol }));
     if (videoRef.current) {
       videoRef.current.volume = vol;
