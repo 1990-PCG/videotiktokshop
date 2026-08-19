@@ -15,7 +15,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
-import { Route as DashboardRecordRouteImport } from './routes/dashboard.record'
+import { Route as DashboardRecordRouteImport } from './routes/dashboard.record..'
 import { Route as DashboardRoteirosIndexRouteImport } from './routes/dashboard.roteiros.index'
 import { Route as DashboardRoteirosProductIdRouteImport } from './routes/dashboard.roteiros.$productId'
 
@@ -50,8 +50,8 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardRecordRoute = DashboardRecordRouteImport.update({
-  id: '/record',
-  path: '/record',
+  id: '/record/',
+  path: '/record/',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardRoteirosIndexRoute = DashboardRoteirosIndexRouteImport.update({
@@ -71,18 +71,18 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
-  '/dashboard/record': typeof DashboardRecordRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/record/': typeof DashboardRecordRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard/profile': typeof DashboardProfileRoute
-  '/dashboard/record': typeof DashboardRecordRoute
   '/admin': typeof AdminIndexRoute
   '/dashboard': typeof DashboardIndexRoute
+  '/dashboard/record': typeof DashboardRecordRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros': typeof DashboardRoteirosIndexRoute
 }
@@ -92,9 +92,9 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
-  '/dashboard/record': typeof DashboardRecordRoute
   '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
+  '/dashboard/record/': typeof DashboardRecordRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
 }
@@ -105,18 +105,18 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/profile'
-    | '/dashboard/record'
     | '/admin/'
     | '/dashboard/'
+    | '/dashboard/record/'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard/profile'
-    | '/dashboard/record'
     | '/admin'
     | '/dashboard'
+    | '/dashboard/record'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros'
   id:
@@ -125,9 +125,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/profile'
-    | '/dashboard/record'
     | '/admin/'
     | '/dashboard/'
+    | '/dashboard/record/'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros/'
   fileRoutesById: FileRoutesById
@@ -182,10 +182,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/dashboard/record': {
-      id: '/dashboard/record'
+    '/dashboard/record/': {
+      id: '/dashboard/record/'
       path: '/record'
-      fullPath: '/dashboard/record'
+      fullPath: '/dashboard/record/'
       preLoaderRoute: typeof DashboardRecordRouteImport
       parentRoute: typeof DashboardRoute
     }
@@ -218,16 +218,16 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface DashboardRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
-  DashboardRecordRoute: typeof DashboardRecordRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardRecordRoute: typeof DashboardRecordRoute
   DashboardRoteirosProductIdRoute: typeof DashboardRoteirosProductIdRoute
   DashboardRoteirosIndexRoute: typeof DashboardRoteirosIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardProfileRoute: DashboardProfileRoute,
-  DashboardRecordRoute: DashboardRecordRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardRecordRoute: DashboardRecordRoute,
   DashboardRoteirosProductIdRoute: DashboardRoteirosProductIdRoute,
   DashboardRoteirosIndexRoute: DashboardRoteirosIndexRoute,
 }

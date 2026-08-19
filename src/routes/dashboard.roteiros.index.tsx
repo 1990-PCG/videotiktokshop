@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAllScriptsGrouped, deleteIndividualScript, generateScripts } from "@/lib/roteiros.functions";
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/dashboard/roteiros/")({
 });
 
 function RoteirosIndexView() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const getGroupedScriptsFn = useServerFn(getAllScriptsGrouped);
   const deleteScriptFn = useServerFn(deleteIndividualScript);
