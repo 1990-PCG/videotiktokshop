@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { VideoEditor, EditorSettings } from "@/components/video/VideoEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X } from "lucide-react";
+import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X, Scissors } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
