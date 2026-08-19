@@ -13,7 +13,7 @@ export const Route = createFileRoute("/dashboard/record/$roteiroRowId/$scriptId"
 });
 
 function RecordView() {
-  const { roteiroRowId, scriptId } = useParams({ from: "/dashboard/record/$roteiroRowId/$scriptId" });
+  const { roteiroRowId, scriptId } = Route.useParams();
   const navigate = useNavigate();
   const getScriptFn = useServerFn(getScriptById);
   const uploadVideoFn = useServerFn(uploadScriptVideo);
