@@ -1,11 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAllScriptsGrouped, deleteIndividualScript, generateScripts } from "@/lib/roteiros.functions";
+import { getAllScriptsGrouped, deleteIndividualScript, generateScripts, updateScriptVideoSettings } from "@/lib/roteiros.functions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VideoEditor, EditorSettings } from "@/components/video/VideoEditor";
+import { Scissors } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2, Download, Video, ExternalLink } from "lucide-react";
+import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2, Download, Video, ExternalLink, Scissors as ScissorsIcon } from "lucide-react";
 import { useState } from "react";
 import { ScriptParamsModal } from "@/components/products/ScriptParamsModal";
 import { toast } from "sonner";
@@ -20,10 +23,12 @@ function RoteirosIndexView() {
   const getGroupedScriptsFn = useServerFn(getAllScriptsGrouped);
   const deleteScriptFn = useServerFn(deleteIndividualScript);
   const generateScriptsFn = useServerFn(generateScripts);
+  const updateSettingsFn = useServerFn(updateScriptVideoSettings);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [isParamsModalOpen, setIsParamsModalOpen] = useState(false);
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
+  const [editingSettingsVideo, setEditingSettingsVideo] = useState<any | null>(null);
 
   const { data: groupedRoteiros, isLoading } = useQuery({
     queryKey: ["all-scripts"],
@@ -39,6 +44,19 @@ function RoteirosIndexView() {
     },
     onError: (error) => {
       toast.error("Erro ao excluir: " + error.message);
+    },
+  });
+
+  const { mutate: updateSettings } = useMutation({
+    mutationFn: (variables: { roteiroRowId: string; scriptId: string; settings: EditorSettings }) => 
+      updateSettingsFn({ data: variables }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-scripts"] });
+      setEditingSettingsVideo(null);
+      toast.success("Ajustes de vídeo salvos!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao salvar ajustes de vídeo.");
     },
   });
 
@@ -222,8 +240,18 @@ function RoteirosIndexView() {
                           <Video className="h-4 w-4" />
                         </Button>
                         {script.video_url && (
-                          <Button
-                            variant="ghost"
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setEditingSettingsVideo({ ...script, roteiroRowId: roteiro.id })}
+                              className="text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
+                              title="Editar Vídeo"
+                            >
+                              <ScissorsIcon className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
                             size="icon"
                             asChild
                             className="text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
@@ -233,6 +261,7 @@ function RoteirosIndexView() {
                               <ExternalLink className="h-4 w-4" />
                             </a>
                           </Button>
+                          </>
                         )}
                         <Button
                           variant="ghost"
@@ -282,6 +311,29 @@ function RoteirosIndexView() {
         onConfirm={handleGenerateMore}
         isLoading={!!generatingId}
       />
+
+      <Dialog open={!!editingSettingsVideo} onOpenChange={(open) => !open && setEditingSettingsVideo(null)}>
+        <DialogContent className="max-w-4xl bg-[#121212] border-[#D4AF37]/20 text-[#FAFAFA]">
+          <DialogHeader>
+            <DialogTitle className="text-[#D4AF37] font-light">
+              Editar Vídeo: {editingSettingsVideo?.titulo || "Sem título"}
+            </DialogTitle>
+          </DialogHeader>
+          {editingSettingsVideo && (
+            <VideoEditor 
+              videoUrl={editingSettingsVideo.video_url}
+              initialSettings={editingSettingsVideo.video_settings}
+              onSave={async (settings) => {
+                updateSettings({
+                  roteiroRowId: editingSettingsVideo.roteiroRowId,
+                  scriptId: editingSettingsVideo.id,
+                  settings
+                });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
