@@ -5,7 +5,7 @@ import { getAllScriptsGrouped, deleteIndividualScript, generateScripts } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2 } from "lucide-react";
+import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2, Download } from "lucide-react";
 import { useState } from "react";
 import { ScriptParamsModal } from "@/components/products/ScriptParamsModal";
 import { toast } from "sonner";
@@ -80,6 +80,45 @@ function RoteirosIndexView() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleDownloadTxt = (script: any) => {
+    const text = `TÍTULO: ${script.titulo}\n\nHOOK: ${script.hook}\n\nROTEIRO:\n${script.roteiro}\n\nCTA: ${script.cta}`;
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${script.titulo || 'roteiro'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Download iniciado!");
+  };
+
+  const handleExportCSV = (roteiro: any) => {
+    if (!Array.isArray(roteiro.conteudo)) return;
+    
+    const headers = ["Titulo", "Hook", "Roteiro", "CTA", "Plataforma"];
+    const rows = roteiro.conteudo.map((s: any) => [
+      `"${(s.titulo || "").replace(/"/g, '""')}"`,
+      `"${(s.hook || "").replace(/"/g, '""')}"`,
+      `"${(s.roteiro || "").replace(/"/g, '""')}"`,
+      `"${(s.cta || "").replace(/"/g, '""')}"`,
+      `"${(roteiro.plataforma || "TikTok").replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `roteiros_${roteiro.produto?.nome || 'export'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("CSV exportado!");
+  };
+
   if (isLoading) {
     return <div className="text-[#D4AF37] animate-pulse">Carregando roteiros...</div>;
   }
@@ -136,6 +175,15 @@ function RoteirosIndexView() {
                   )}
                   Gerar Mais 5
                 </Button>
+                <Button 
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleExportCSV(roteiro)}
+                  className="w-full sm:w-auto border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar CSV
+                </Button>
               </div>
 
               <div className="grid gap-6">
@@ -153,6 +201,15 @@ function RoteirosIndexView() {
                           className="text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
                         >
                           {copiedId === script.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDownloadTxt(script)}
+                          className="text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
+                          title="Baixar .txt"
+                        >
+                          <Download className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

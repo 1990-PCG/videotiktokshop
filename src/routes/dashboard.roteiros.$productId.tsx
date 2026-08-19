@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getScriptsByProduct } from "@/lib/roteiros.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy, Check } from "lucide-react";
+import { ArrowLeft, Copy, Check, Download } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
@@ -53,6 +53,20 @@ function RoteirosView() {
     setTimeout(() => setCopiedIndex(null), 2000);
   };
 
+  const handleDownloadTxt = (script: any) => {
+    const text = `TÍTULO: ${script.titulo}\n\nHOOK: ${script.hook}\n\nROTEIRO:\n${script.roteiro}\n\nCTA: ${script.cta}`;
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${script.titulo || 'roteiro'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Download iniciado!");
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -84,6 +98,15 @@ function RoteirosView() {
               >
                 {copiedIndex === index ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                 <span className="ml-2 text-xs">Copiar</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDownloadTxt(script)}
+                className="text-[#D4AF37] hover:bg-[#D4AF37]/10"
+              >
+                <Download className="h-4 w-4" />
+                <span className="ml-2 text-xs">Baixar .txt</span>
               </Button>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
