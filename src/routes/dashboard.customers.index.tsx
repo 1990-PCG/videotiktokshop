@@ -25,7 +25,7 @@ function CustomersPage() {
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ["customers"],
-    queryFn: () => getCustomersFn(),
+    queryFn: () => getCustomersFn({ data: undefined }),
   });
 
   const createMutation = useMutation({
@@ -142,7 +142,7 @@ function CustomerHistory({ clienteId }: { clienteId: string }) {
   const getHistoryFn = useServerFn(getCustomerHistory);
   const { data: history } = useQuery({
     queryKey: ["customer-history", clienteId],
-    queryFn: () => getHistoryFn(clienteId),
+    queryFn: () => getHistoryFn({ data: clienteId }),
   });
 
   if (!history || history.length === 0) {

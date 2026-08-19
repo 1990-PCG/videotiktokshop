@@ -16,6 +16,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
+import { Route as DashboardCustomersIndexRouteImport } from './routes/dashboard.customers.index'
 import { Route as DashboardRoteirosIndexRouteImport } from './routes/dashboard.roteiros.index'
 import { Route as DashboardRoteirosProductIdRouteImport } from './routes/dashboard.roteiros.$productId'
 import { Route as DashboardVideosIndexRouteImport } from './routes/dashboard.videos.index'
@@ -56,6 +57,11 @@ const DashboardProfileRoute = DashboardProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardCustomersIndexRoute = DashboardCustomersIndexRouteImport.update({
+  id: '/customers/',
+  path: '/customers/',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardRoteirosIndexRoute = DashboardRoteirosIndexRouteImport.update({
   id: '/roteiros/',
   path: '/roteiros/',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
+  '/dashboard/customers/': typeof DashboardCustomersIndexRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
   '/dashboard/videos/': typeof DashboardVideosIndexRoute
   '/dashboard/record/$roteiroRowId/$scriptId': typeof DashboardRecordRoteiroRowIdScriptIdRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
+  '/dashboard/customers': typeof DashboardCustomersIndexRoute
   '/dashboard/roteiros': typeof DashboardRoteirosIndexRoute
   '/dashboard/videos': typeof DashboardVideosIndexRoute
   '/dashboard/record/$roteiroRowId/$scriptId': typeof DashboardRecordRoteiroRowIdScriptIdRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
+  '/dashboard/customers/': typeof DashboardCustomersIndexRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
   '/dashboard/videos/': typeof DashboardVideosIndexRoute
   '/dashboard/record/$roteiroRowId/$scriptId': typeof DashboardRecordRoteiroRowIdScriptIdRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
+    | '/dashboard/customers/'
     | '/dashboard/roteiros/'
     | '/dashboard/videos/'
     | '/dashboard/record/$roteiroRowId/$scriptId'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/roteiros/$productId'
+    | '/dashboard/customers'
     | '/dashboard/roteiros'
     | '/dashboard/videos'
     | '/dashboard/record/$roteiroRowId/$scriptId'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
+    | '/dashboard/customers/'
     | '/dashboard/roteiros/'
     | '/dashboard/videos/'
     | '/dashboard/record/$roteiroRowId/$scriptId'
@@ -214,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardProfileRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/customers/': {
+      id: '/dashboard/customers/'
+      path: '/customers'
+      fullPath: '/dashboard/customers/'
+      preLoaderRoute: typeof DashboardCustomersIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/roteiros/': {
       id: '/dashboard/roteiros/'
       path: '/roteiros'
@@ -261,6 +280,7 @@ interface DashboardRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardRoteirosProductIdRoute: typeof DashboardRoteirosProductIdRoute
+  DashboardCustomersIndexRoute: typeof DashboardCustomersIndexRoute
   DashboardRoteirosIndexRoute: typeof DashboardRoteirosIndexRoute
   DashboardVideosIndexRoute: typeof DashboardVideosIndexRoute
   DashboardRecordRoteiroRowIdScriptIdRoute: typeof DashboardRecordRoteiroRowIdScriptIdRoute
@@ -270,6 +290,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardRoteirosProductIdRoute: DashboardRoteirosProductIdRoute,
+  DashboardCustomersIndexRoute: DashboardCustomersIndexRoute,
   DashboardRoteirosIndexRoute: DashboardRoteirosIndexRoute,
   DashboardVideosIndexRoute: DashboardVideosIndexRoute,
   DashboardRecordRoteiroRowIdScriptIdRoute:
