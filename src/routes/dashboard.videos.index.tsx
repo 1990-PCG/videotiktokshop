@@ -77,14 +77,14 @@ function MyVideosView() {
         const url = new URL(video.video_url);
         const pathParts = url.pathname.split('/videos/');
         if (pathParts.length > 1) {
-          videoPath = pathParts[1].split('?')[0];
+          videoPath = pathParts[1]?.split('?')[0];
         }
       } catch (e) {}
 
       removeVideo({
         roteiroRowId: video.roteiroRowId,
         scriptId: video.id,
-        videoPath
+        videoPath: videoPath || null
       });
     }
   };
