@@ -29,7 +29,7 @@ function CustomersPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => createCustomerFn(data),
+    mutationFn: (data: any) => createCustomerFn({ data }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       setIsModalOpen(false);
@@ -40,7 +40,7 @@ function CustomersPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteCustomerFn(id),
+    mutationFn: (id: string) => deleteCustomerFn({ data: id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Cliente removido.");
