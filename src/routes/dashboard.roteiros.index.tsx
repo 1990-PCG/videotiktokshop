@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2, Download, Video, ExternalLink, Scissors as ScissorsIcon } from "lucide-react";
 import { useState } from "react";
 import { ScriptParamsModal } from "@/components/products/ScriptParamsModal";
+import { SendToCustomerModal } from "@/components/products/SendToCustomerModal";
 import { toast } from "sonner";
+import { Share2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/roteiros/")({
   component: RoteirosIndexView,
@@ -29,6 +31,7 @@ function RoteirosIndexView() {
   const [isParamsModalOpen, setIsParamsModalOpen] = useState(false);
   const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
   const [editingSettingsVideo, setEditingSettingsVideo] = useState<any | null>(null);
+  const [sharingScriptId, setSharingScriptId] = useState<string | null>(null);
 
   const { data: groupedRoteiros, isLoading } = useQuery({
     queryKey: ["all-scripts"],
@@ -239,6 +242,15 @@ function RoteirosIndexView() {
                         >
                           <Video className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSharingScriptId(roteiro.id)}
+                          className="text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
+                          title="Vincular ao Cliente"
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
                         {script.video_url && (
                           <>
                             <Button
@@ -334,6 +346,12 @@ function RoteirosIndexView() {
           )}
         </DialogContent>
       </Dialog>
+
+      <SendToCustomerModal 
+        open={!!sharingScriptId} 
+        onOpenChange={(open) => !open && setSharingScriptId(null)}
+        roteiroId={sharingScriptId || ""}
+      />
     </div>
   );
 }

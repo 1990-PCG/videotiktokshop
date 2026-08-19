@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      cliente_historico: {
+        Row: {
+          cliente_id: string
+          created_at: string | null
+          id: string
+          roteiro_id: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string | null
+          id?: string
+          roteiro_id: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string | null
+          id?: string
+          roteiro_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cliente_historico_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cliente_historico_roteiro_id_fkey"
+            columns: ["roteiro_id"]
+            isOneToOne: false
+            referencedRelation: "roteiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          nome: string
+          telefone: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nome: string
+          telefone?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           categoria: string | null
@@ -75,6 +138,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_billing: {
+        Row: {
+          created_at: string | null
+          id: string
+          pagamento_em_dia: boolean | null
+          user_id: string
+          valor: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          pagamento_em_dia?: boolean | null
+          user_id: string
+          valor?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          pagamento_em_dia?: boolean | null
+          user_id?: string
+          valor?: number | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
