@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getAllScriptsGrouped, deleteIndividualScript, generateScripts } from "@/lib/roteiros.functions";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2, Download } from "lucide-react";
+import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2, Download, Video, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { ScriptParamsModal } from "@/components/products/ScriptParamsModal";
 import { toast } from "sonner";
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/dashboard/roteiros/")({
 });
 
 function RoteirosIndexView() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const getGroupedScriptsFn = useServerFn(getAllScriptsGrouped);
   const deleteScriptFn = useServerFn(deleteIndividualScript);
@@ -211,6 +212,28 @@ function RoteirosIndexView() {
                         >
                           <Download className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => navigate({ to: `/dashboard/record/${roteiro.id}/${script.id}` as any })}
+                          className="text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
+                          title="Gravar Vídeo"
+                        >
+                          <Video className="h-4 w-4" />
+                        </Button>
+                        {script.video_url && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            asChild
+                            className="text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
+                            title="Ver Vídeo"
+                          >
+                            <a href={script.video_url} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

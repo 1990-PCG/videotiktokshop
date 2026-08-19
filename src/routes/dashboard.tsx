@@ -1,9 +1,12 @@
 import { createFileRoute, useNavigate, Outlet } from "@tanstack/react-router";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, FileText, Settings, LogOut, User, Menu } from "lucide-react";
+import { Package, FileText, Settings, LogOut, User, Menu, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { checkIsAdmin } from "@/lib/admin.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 
 
 export const Route = createFileRoute("/dashboard")({
@@ -13,6 +16,13 @@ export const Route = createFileRoute("/dashboard")({
 function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const checkIsAdminFn = useServerFn(checkIsAdmin);
+
+  const { data: isAdmin } = useQuery({
+    queryKey: ["is-admin"],
+    queryFn: () => checkIsAdminFn(),
+    enabled: !!user,
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -67,6 +77,17 @@ function Dashboard() {
                       <span>Perfil</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
+                  {isAdmin && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton 
+                        onClick={() => navigate({ to: "/admin" as any })}
+                        className="text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                      >
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Painel Admin</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                   <SidebarMenuItem>
                     <SidebarMenuButton className="text-[#FAFAFA] hover:bg-[#D4AF37]/10">
                       <Settings className="mr-2 h-4 w-4" />
