@@ -80,7 +80,7 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
 
   const handleSeek = (value: number[]) => {
     if (videoRef.current) {
-      const time = value[0];
+      const time = value[0] ?? 0;
       videoRef.current.currentTime = time;
       setCurrentTime(time);
     }
