@@ -48,7 +48,11 @@ export const updateCustomer = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: customer, error } = await context.supabase
       .from("clientes")
-      .update(data.updates)
+      .update({
+        nome: data.updates.nome,
+        email: data.updates.email || null,
+        telefone: data.updates.telefone || null,
+      })
       .eq("id", data.id)
       .select()
       .single();
