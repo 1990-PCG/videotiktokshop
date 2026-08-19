@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -18,15 +19,30 @@ function LandingPage() {
 
   const handleAuth = async (e: React.FormEvent, type: "login" | "signup") => {
     e.preventDefault();
+    if (!email || !password) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
     setLoading(true);
     try {
-      if (type === "signup") {
-        await supabase.auth.signUp({ email, password });
-      } else {
-        await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = type === "signup" 
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        toast.error(error.message);
+        return;
       }
+
+      if (type === "signup" && !data.session) {
+        toast.success("Verifique seu email para confirmar o cadastro!");
+        return;
+      }
+
+      toast.success(type === "signup" ? "Cadastro realizado!" : "Login realizado!");
       navigate({ to: "/dashboard" as any });
-    } catch (error) {
+    } catch (error: any) {
+      toast.error("Ocorreu um erro inesperado");
       console.error(error);
     } finally {
       setLoading(false);
