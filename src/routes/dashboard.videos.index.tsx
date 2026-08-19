@@ -212,27 +212,28 @@ function MyVideosView() {
               </Button>
               
               <div className="flex justify-between gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1 border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
-                asChild
-              >
-                <a href={video.video_url} download={`video_${video.id}.webm`}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Baixar
-                </a>
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10"
-                onClick={() => handleDelete(video)}
-                disabled={isDeleting}
-              >
-                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                Excluir
-              </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                  asChild
+                >
+                  <a href={video.video_url} download={`video_${video.id}.webm`}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Baixar
+                  </a>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10"
+                  onClick={() => handleDelete(video)}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Excluir
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
