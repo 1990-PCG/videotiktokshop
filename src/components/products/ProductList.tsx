@@ -39,23 +39,33 @@ export function ProductList() {
     },
   });
 
-  const handleGenerateScripts = async (product: any) => {
-    setGeneratingId(product.id);
+  const handleOpenParams = (product: any) => {
+    setSelectedProduct(product);
+    setIsParamsModalOpen(true);
+  };
+
+  const handleGenerateScripts = async (params: { plataforma: string, publicoAlvo: string }) => {
+    if (!selectedProduct) return;
+    
+    setGeneratingId(selectedProduct.id);
     try {
       const result = await generateScriptsFn({
         data: {
-          productId: product.id,
-          nome: product.nome,
-          categoria: product.categoria,
-          preco: product.preco,
-          descricao: product.descricao,
+          productId: selectedProduct.id,
+          nome: selectedProduct.nome,
+          categoria: selectedProduct.categoria,
+          preco: selectedProduct.preco,
+          descricao: selectedProduct.descricao,
+          plataforma: params.plataforma,
+          publicoAlvo: params.publicoAlvo,
         }
       });
       
       toast.success("Roteiros gerados com sucesso!");
+      setIsParamsModalOpen(false);
       navigate({ 
         to: "/dashboard/roteiros/$productId", 
-        params: { productId: product.id } 
+        params: { productId: selectedProduct.id } 
       } as any);
     } catch (error: any) {
       console.error(error);
@@ -80,7 +90,10 @@ export function ProductList() {
           Você ainda não cadastrou nenhum produto. Comece agora mesmo!
         </p>
         <Button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingProduct(null);
+            setIsModalOpen(true);
+          }}
           className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -103,7 +116,10 @@ export function ProductList() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-[#FAFAFA] text-lg font-light">Seus Produtos ({products.length})</h2>
         <Button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingProduct(null);
+            setIsModalOpen(true);
+          }}
           className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90 w-full sm:w-auto"
         >
           <Plus className="mr-2 h-4 w-4" />
