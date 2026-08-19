@@ -29,8 +29,8 @@ function MyVideosView() {
   });
 
   const { mutate: removeVideo, isPending: isDeleting } = useMutation({
-    mutationFn: (variables: { roteiroRowId: string; scriptId: string; videoPath?: string }) => 
-      deleteVideoFn({ data: variables }),
+    mutationFn: (variables: { roteiroRowId: string; scriptId: string; videoPath?: string | null }) => 
+      deleteVideoFn({ data: { ...variables, videoPath: variables.videoPath ?? undefined } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-videos"] });
       toast.success("Vídeo excluído!");

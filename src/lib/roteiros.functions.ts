@@ -320,8 +320,9 @@ export const deleteScriptVideo = createServerFn({ method: "POST" })
   .inputValidator((data) => z.object({
     roteiroRowId: z.string().uuid(),
     scriptId: z.string(),
-    videoPath: z.string().optional() // Path in storage to delete
+    videoPath: z.string().optional().nullable() // Path in storage to delete
   }).parse(data))
+
   .handler(async ({ context, data }) => {
     const { data: existing, error: fetchError } = await context.supabase
       .from("roteiros")
