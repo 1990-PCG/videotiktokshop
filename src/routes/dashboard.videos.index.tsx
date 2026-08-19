@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAllVideos, deleteScriptVideo, updateScriptTitle } from "@/lib/roteiros.functions";
+import { getAllVideos, deleteScriptVideo, updateScriptTitle, updateScriptVideoSettings } from "@/lib/roteiros.functions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VideoEditor, EditorSettings } from "@/components/video/VideoEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X } from "lucide-react";
+import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X, Scissors } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -19,9 +21,11 @@ function MyVideosView() {
   const getVideosFn = useServerFn(getAllVideos);
   const deleteVideoFn = useServerFn(deleteScriptVideo);
   const updateTitleFn = useServerFn(updateScriptTitle);
+  const updateSettingsFn = useServerFn(updateScriptVideoSettings);
   
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [editingSettingsVideo, setEditingSettingsVideo] = useState<any | null>(null);
 
   const { data: videos, isLoading } = useQuery({
     queryKey: ["my-videos"],
@@ -50,6 +54,19 @@ function MyVideosView() {
     },
     onError: (error) => {
       toast.error("Erro ao atualizar título.");
+    },
+  });
+
+  const { mutate: updateSettings } = useMutation({
+    mutationFn: (variables: { roteiroRowId: string; scriptId: string; settings: EditorSettings }) => 
+      updateSettingsFn({ data: variables }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-videos"] });
+      setEditingSettingsVideo(null);
+      toast.success("Ajustes de vídeo salvos!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao salvar ajustes de vídeo.");
     },
   });
 
@@ -183,32 +200,67 @@ function MyVideosView() {
               </div>
             </CardHeader>
             
-            <CardContent className="p-4 pt-0 flex justify-between gap-2 mt-4">
+            <CardContent className="p-4 pt-0 space-y-3">
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="flex-1 border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
-                asChild
+                className="w-full border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                onClick={() => setEditingSettingsVideo(video)}
               >
-                <a href={video.video_url} download={`video_${video.id}.webm`}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Baixar
-                </a>
+                <Scissors className="mr-2 h-4 w-4" />
+                Editar Vídeo
               </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10"
-                onClick={() => handleDelete(video)}
-                disabled={isDeleting}
-              >
-                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                Excluir
-              </Button>
+              
+              <div className="flex justify-between gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1 border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                  asChild
+                >
+                  <a href={video.video_url} download={`video_${video.id}.webm`}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Baixar
+                  </a>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10"
+                  onClick={() => handleDelete(video)}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Excluir
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <Dialog open={!!editingSettingsVideo} onOpenChange={(open) => !open && setEditingSettingsVideo(null)}>
+        <DialogContent className="max-w-4xl bg-[#121212] border-[#D4AF37]/20 text-[#FAFAFA]">
+          <DialogHeader>
+            <DialogTitle className="text-[#D4AF37] font-light">
+              Editar Vídeo: {editingSettingsVideo?.titulo || "Sem título"}
+            </DialogTitle>
+          </DialogHeader>
+          {editingSettingsVideo && (
+            <VideoEditor 
+              videoUrl={editingSettingsVideo.video_url}
+              initialSettings={editingSettingsVideo.video_settings}
+              onSave={async (settings) => {
+                updateSettings({
+                  roteiroRowId: editingSettingsVideo.roteiroRowId,
+                  scriptId: editingSettingsVideo.id,
+                  settings
+                });
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

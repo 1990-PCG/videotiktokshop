@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Outlet } from "@tanstack/react-router";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Package, FileText, Settings, LogOut, User, Menu, ShieldCheck, Video } from "lucide-react";
+import { Package, FileText, Settings, LogOut, User, Menu, ShieldCheck, Video, Scissors } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { checkIsAdmin } from "@/lib/admin.functions";

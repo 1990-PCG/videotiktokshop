@@ -361,6 +361,42 @@ export const deleteScriptVideo = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+export const updateScriptVideoSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({
+    roteiroRowId: z.string().uuid(),
+    scriptId: z.string(),
+    settings: z.any()
+  }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { data: existing, error: fetchError } = await context.supabase
+      .from("roteiros")
+      .select("conteudo")
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const currentScripts = existing.conteudo as any[];
+    const updatedScripts = currentScripts.map((s: any) => {
+      if (s.id === data.scriptId) {
+        return { ...s, video_settings: data.settings };
+      }
+      return s;
+    });
+
+    const { error: updateError } = await context.supabase
+      .from("roteiros")
+      .update({ conteudo: updatedScripts })
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId);
+    
+    if (updateError) throw updateError;
+
+    return { success: true };
+  });
+
 export const getAllVideos = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
