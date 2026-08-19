@@ -4,11 +4,12 @@ import { getProducts, deleteProduct } from "@/lib/products.functions";
 import { generateScripts } from "@/lib/roteiros.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, Trash2, FileText, Plus, Loader2 } from "lucide-react";
+import { Package, Trash2, FileText, Plus, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 import { ProductModal } from "./ProductModal";
 import { useNavigate } from "@tanstack/react-router";
+import { ScriptParamsModal } from "./ScriptParamsModal";
 
 export function ProductList() {
   const queryClient = useQueryClient();
@@ -17,7 +18,10 @@ export function ProductList() {
   const generateScriptsFn = useServerFn(generateScripts);
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [isParamsModalOpen, setIsParamsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
 
   const { data: products, isLoading } = useQuery({
     queryKey: ["products"],
@@ -35,23 +39,33 @@ export function ProductList() {
     },
   });
 
-  const handleGenerateScripts = async (product: any) => {
-    setGeneratingId(product.id);
+  const handleOpenParams = (product: any) => {
+    setSelectedProduct(product);
+    setIsParamsModalOpen(true);
+  };
+
+  const handleGenerateScripts = async (params: { plataforma: string, publicoAlvo: string }) => {
+    if (!selectedProduct) return;
+    
+    setGeneratingId(selectedProduct.id);
     try {
       const result = await generateScriptsFn({
         data: {
-          productId: product.id,
-          nome: product.nome,
-          categoria: product.categoria,
-          preco: product.preco,
-          descricao: product.descricao,
+          productId: selectedProduct.id,
+          nome: selectedProduct.nome,
+          categoria: selectedProduct.categoria,
+          preco: selectedProduct.preco,
+          descricao: selectedProduct.descricao,
+          plataforma: params.plataforma,
+          publicoAlvo: params.publicoAlvo,
         }
       });
       
       toast.success("Roteiros gerados com sucesso!");
+      setIsParamsModalOpen(false);
       navigate({ 
         to: "/dashboard/roteiros/$productId", 
-        params: { productId: product.id } 
+        params: { productId: selectedProduct.id } 
       } as any);
     } catch (error: any) {
       console.error(error);
@@ -76,13 +90,23 @@ export function ProductList() {
           Você ainda não cadastrou nenhum produto. Comece agora mesmo!
         </p>
         <Button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingProduct(null);
+            setIsModalOpen(true);
+          }}
           className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90"
         >
           <Plus className="mr-2 h-4 w-4" />
           Novo Produto
         </Button>
-        <ProductModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+        <ProductModal 
+          open={isModalOpen} 
+          onOpenChange={(open) => {
+            setIsModalOpen(open);
+            if (!open) setEditingProduct(null);
+          }} 
+          product={editingProduct}
+        />
       </div>
     );
   }
@@ -92,7 +116,10 @@ export function ProductList() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-[#FAFAFA] text-lg font-light">Seus Produtos ({products.length})</h2>
         <Button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={() => {
+            setEditingProduct(null);
+            setIsModalOpen(true);
+          }}
           className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90 w-full sm:w-auto"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -113,18 +140,31 @@ export function ProductList() {
                     {product.nome}
                   </CardTitle>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => {
-                    if (confirm("Tem certeza que deseja excluir este produto?")) {
-                      removeProduct(product.id);
-                    }
-                  }}
-                  className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10 h-8 w-8"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => {
+                      setEditingProduct(product);
+                      setIsModalOpen(true);
+                    }}
+                    className="text-[#D4AF37]/60 hover:text-[#D4AF37] hover:bg-[#D4AF37]/10 h-8 w-8"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => {
+                      if (confirm("Tem certeza que deseja excluir este produto?")) {
+                        removeProduct(product.id);
+                      }
+                    }}
+                    className="text-red-500/60 hover:text-red-500 hover:bg-red-500/10 h-8 w-8"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -143,7 +183,7 @@ export function ProductList() {
               <Button 
                 variant="outline" 
                 disabled={generatingId === product.id}
-                onClick={() => handleGenerateScripts(product)}
+                onClick={() => handleOpenParams(product)}
                 className="w-full border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10 text-sm font-light"
               >
                 {generatingId === product.id ? (
@@ -162,7 +202,20 @@ export function ProductList() {
           </Card>
         ))}
       </div>
-      <ProductModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+      <ProductModal 
+        open={isModalOpen} 
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) setEditingProduct(null);
+        }} 
+        product={editingProduct}
+      />
+      <ScriptParamsModal 
+        open={isParamsModalOpen} 
+        onOpenChange={setIsParamsModalOpen} 
+        onConfirm={handleGenerateScripts}
+        isLoading={!!generatingId}
+      />
     </div>
   );
 }

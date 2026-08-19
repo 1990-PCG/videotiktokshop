@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useServerFn } from "@tanstack/react-start"
-import { createProduct } from "@/lib/products.functions"
+import { createProduct, updateProduct } from "@/lib/products.functions"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -44,11 +44,13 @@ type FormValues = z.infer<typeof formSchema>;
 interface ProductModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  product?: any
 }
 
-export function ProductModal({ open, onOpenChange }: ProductModalProps) {
+export function ProductModal({ open, onOpenChange, product }: ProductModalProps) {
   const queryClient = useQueryClient()
   const createProductFn = useServerFn(createProduct)
+  const updateProductFn = useServerFn(updateProduct)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -60,12 +62,43 @@ export function ProductModal({ open, onOpenChange }: ProductModalProps) {
     },
   })
 
+  // Update form values when product changes
+  React.useEffect(() => {
+    if (product && open) {
+      form.reset({
+        nome: product.nome || "",
+        categoria: product.categoria || "",
+        preco: product.preco ? product.preco.toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "",
+        descricao: product.descricao || "",
+      });
+    } else if (!product && open) {
+      form.reset({
+        nome: "",
+        categoria: "",
+        preco: "",
+        descricao: "",
+      });
+    }
+  }, [product, open, form]);
+
   const { mutate, isPending } = useMutation({
     mutationFn: (values: FormValues) => {
       const precoNumber = values.preco 
         ? parseFloat(values.preco.replace(/[^\d.,]/g, "").replace(",", ".")) 
         : null;
       
+      if (product?.id) {
+        return updateProductFn({
+          data: {
+            id: product.id,
+            nome: values.nome,
+            categoria: values.categoria,
+            preco: precoNumber,
+            descricao: values.descricao || null,
+          }
+        });
+      }
+
       return createProductFn({
         data: {
           nome: values.nome,
@@ -77,12 +110,12 @@ export function ProductModal({ open, onOpenChange }: ProductModalProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] })
-      toast.success("Produto criado com sucesso!")
+      toast.success(product ? "Produto atualizado com sucesso!" : "Produto criado com sucesso!")
       onOpenChange(false)
       form.reset()
     },
     onError: (error) => {
-      toast.error("Erro ao criar produto: " + error.message)
+      toast.error("Erro ao salvar produto: " + error.message)
     },
   })
 
@@ -94,7 +127,7 @@ export function ProductModal({ open, onOpenChange }: ProductModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px] bg-[#121212] border-[#D4AF37]/20 text-[#FAFAFA]">
         <DialogHeader>
-          <DialogTitle className="text-[#D4AF37]">Novo Produto</DialogTitle>
+          <DialogTitle className="text-[#D4AF37]">{product ? "Editar Produto" : "Novo Produto"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -117,7 +150,7 @@ export function ProductModal({ open, onOpenChange }: ProductModalProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoria *</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="bg-[#0A0A0A] border-[#D4AF37]/20">
                         <SelectValue placeholder="Selecione uma categoria" />
@@ -184,7 +217,7 @@ export function ProductModal({ open, onOpenChange }: ProductModalProps) {
                 disabled={isPending}
                 className="bg-[#D4AF37] text-[#0A0A0A] hover:bg-[#D4AF37]/90 w-full"
               >
-                {isPending ? "Salvando..." : "Salvar Produto"}
+                {isPending ? "Salvando..." : (product ? "Atualizar Produto" : "Salvar Produto")}
               </Button>
             </DialogFooter>
           </form>

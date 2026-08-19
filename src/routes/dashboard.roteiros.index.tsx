@@ -5,8 +5,9 @@ import { getAllScriptsGrouped, deleteIndividualScript, generateScripts } from "@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Trash2, Plus, Loader2, FileText } from "lucide-react";
+import { Copy, Check, Trash2, Plus, Loader2, FileText, Settings2 } from "lucide-react";
 import { useState } from "react";
+import { ScriptParamsModal } from "@/components/products/ScriptParamsModal";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard/roteiros/")({
@@ -20,6 +21,8 @@ function RoteirosIndexView() {
   const generateScriptsFn = useServerFn(generateScripts);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
+  const [isParamsModalOpen, setIsParamsModalOpen] = useState(false);
+  const [selectedRoteiro, setSelectedRoteiro] = useState<any>(null);
 
   const { data: groupedRoteiros, isLoading } = useQuery({
     queryKey: ["all-scripts"],
@@ -38,20 +41,30 @@ function RoteirosIndexView() {
     },
   });
 
-  const handleGenerateMore = async (roteiro: any) => {
-    setGeneratingId(roteiro.id);
+  const handleOpenParams = (roteiro: any) => {
+    setSelectedRoteiro(roteiro);
+    setIsParamsModalOpen(true);
+  };
+
+  const handleGenerateMore = async (params: { plataforma: string, publicoAlvo: string }) => {
+    if (!selectedRoteiro) return;
+    
+    setGeneratingId(selectedRoteiro.id);
     try {
       await generateScriptsFn({
         data: {
-          productId: roteiro.produto_id,
-          nome: roteiro.produto.nome,
-          categoria: roteiro.produto.categoria,
-          preco: roteiro.produto.preco,
-          descricao: roteiro.produto.descricao,
+          productId: selectedRoteiro.produto_id,
+          nome: selectedRoteiro.produto.nome,
+          categoria: selectedRoteiro.produto.categoria,
+          preco: selectedRoteiro.produto.preco,
+          descricao: selectedRoteiro.produto.descricao,
+          plataforma: params.plataforma,
+          publicoAlvo: params.publicoAlvo,
         }
       });
       queryClient.invalidateQueries({ queryKey: ["all-scripts"] });
       toast.success("Mais 5 roteiros gerados!");
+      setIsParamsModalOpen(false);
     } catch (error) {
       toast.error("Erro ao gerar roteiros.");
     } finally {
@@ -113,7 +126,7 @@ function RoteirosIndexView() {
                   size="sm"
                   variant="outline"
                   disabled={generatingId === roteiro.id || !roteiro.produto}
-                  onClick={() => handleGenerateMore(roteiro)}
+                  onClick={() => handleOpenParams(roteiro)}
                   className="w-full sm:w-auto border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10"
                 >
                   {generatingId === roteiro.id ? (
@@ -182,6 +195,13 @@ function RoteirosIndexView() {
           </AccordionItem>
         ))}
       </Accordion>
+      
+      <ScriptParamsModal 
+        open={isParamsModalOpen} 
+        onOpenChange={setIsParamsModalOpen} 
+        onConfirm={handleGenerateMore}
+        isLoading={!!generatingId}
+      />
     </div>
   );
 }

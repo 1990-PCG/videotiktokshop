@@ -10,18 +10,21 @@ export const generateScripts = createServerFn({ method: "POST" })
     categoria: z.string().optional().nullable(),
     preco: z.number().optional().nullable(),
     descricao: z.string().optional().nullable(),
+    plataforma: z.string().default("TikTok"),
+    publicoAlvo: z.string().default("Geral"),
   }).parse(data))
   .handler(async ({ context, data }) => {
-    const prompt = `Você é especialista em roteiros de vídeo curto para TikTok Shop no Brasil.
-
+    const prompt = `Você é especialista em roteiros de vídeo curto para ${data.plataforma} no Brasil.
+    
+Público-alvo: ${data.publicoAlvo}
 Produto: ${data.nome}
 Categoria: ${data.categoria || 'N/A'}
 Preço: R$${data.preco || '0'}
 Descrição: ${data.descricao || 'N/A'}
 
-Gere 5 roteiros de vídeo DIFERENTES entre si (varie gancho, ângulo, formato e ritmo — nunca repita a mesma estrutura entre os roteiros).
+Gere 5 roteiros de vídeo DIFERENTES entre si voltados especificamente para a plataforma ${data.plataforma}. Varie gancho, ângulo, formato e ritmo.
 
-Cada roteiro deve ter: hook (primeiros 2 segundos), desenvolvimento, CTA final.
+Cada roteiro deve ter: hook (primeiros 2 segundos), desenvolvimento, CTA final condizente com ${data.plataforma}.
 
 Responda APENAS em JSON válido, neste formato, sem nenhum texto antes ou depois:
 
