@@ -78,6 +78,8 @@ function RoteirosIndexView() {
     setCopiedId(script.id);
     toast.success("Roteiro copiado!");
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
   const handleDownloadTxt = (script: any) => {
     const text = `TÍTULO: ${script.titulo}\n\nHOOK: ${script.hook}\n\nROTEIRO:\n${script.roteiro}\n\nCTA: ${script.cta}`;
     const blob = new Blob([text], { type: "text/plain" });
