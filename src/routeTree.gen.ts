@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as DashboardRoteirosIndexRouteImport } from './routes/dashboard.roteiros.index'
@@ -31,6 +32,11 @@ const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
@@ -56,17 +62,18 @@ const DashboardRoteirosProductIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/admin': typeof AdminIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros': typeof DashboardRoteirosIndexRoute
@@ -74,9 +81,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRouteWithChildren
   '/dashboard/profile': typeof DashboardProfileRoute
+  '/admin/': typeof AdminIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/dashboard/roteiros/$productId': typeof DashboardRoteirosProductIdRoute
   '/dashboard/roteiros/': typeof DashboardRoteirosIndexRoute
@@ -88,14 +96,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/profile'
+    | '/admin/'
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/dashboard/profile'
+    | '/admin'
     | '/dashboard'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros'
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/dashboard/profile'
+    | '/admin/'
     | '/dashboard/'
     | '/dashboard/roteiros/$productId'
     | '/dashboard/roteiros/'
@@ -112,7 +122,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   DashboardRoute: typeof DashboardRouteWithChildren
 }
 
@@ -138,6 +148,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/dashboard/': {
       id: '/dashboard/'
@@ -170,6 +187,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminIndexRoute: typeof AdminIndexRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminIndexRoute: AdminIndexRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface DashboardRouteChildren {
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -190,7 +217,7 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   DashboardRoute: DashboardRouteWithChildren,
 }
 export const routeTree = rootRouteImport

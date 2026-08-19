@@ -220,3 +220,61 @@ export const deleteIndividualScript = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+export const getScriptById = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({ 
+    roteiroRowId: z.string().uuid(),
+    scriptId: z.string()
+  }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { data: existing, error } = await context.supabase
+      .from("roteiros")
+      .select("*, produto:produtos(*)")
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId)
+      .single();
+
+    if (error) throw error;
+
+    const script = (existing.conteudo as any[]).find((s: any) => s.id === data.scriptId);
+    if (!script) throw new Error("Script not found");
+
+    return { ...script, roteiroRowId: existing.id, produto: existing.produto };
+  });
+
+export const uploadScriptVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({
+    roteiroRowId: z.string().uuid(),
+    scriptId: z.string(),
+    videoUrl: z.string().url()
+  }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { data: existing, error: fetchError } = await context.supabase
+      .from("roteiros")
+      .select("conteudo")
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const currentScripts = existing.conteudo as any[];
+    const updatedScripts = currentScripts.map((s: any) => {
+      if (s.id === data.scriptId) {
+        return { ...s, video_url: data.videoUrl };
+      }
+      return s;
+    });
+
+    const { error: updateError } = await context.supabase
+      .from("roteiros")
+      .update({ conteudo: updatedScripts })
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId);
+    
+    if (updateError) throw updateError;
+
+    return { success: true };
+  });
