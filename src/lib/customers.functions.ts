@@ -27,7 +27,9 @@ export const createCustomer = createServerFn({ method: "POST" })
     const { data: customer, error } = await context.supabase
       .from("clientes")
       .insert({
-        ...data,
+        nome: data.nome,
+        email: data.email || null,
+        telefone: data.telefone || null,
         user_id: context.userId,
       })
       .select()
