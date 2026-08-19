@@ -31,18 +31,17 @@ Responda APENAS em JSON válido, neste formato, sem nenhum texto antes ou depois
 [{"titulo": "...", "hook": "...", "roteiro": "...", "cta": "..."}]`;
 
     try {
-      const response = await fetch("https://api.lovable.ai/v1/chat/completions", {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${process.env['LOVABLE_API_KEY']}`,
         },
         body: JSON.stringify({
-          model: "claude-3-5-sonnet-20241022",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "user", content: prompt }
           ],
-          response_format: { type: "json_object" }
         }),
       });
 
