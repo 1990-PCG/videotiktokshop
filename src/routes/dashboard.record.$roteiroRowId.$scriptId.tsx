@@ -86,16 +86,35 @@ function RecordView() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('video/')) {
+        toast.error("Por favor, selecione um arquivo de vídeo.");
+        return;
+      }
+      setSelectedFile(file);
+      const url = URL.createObjectURL(file);
+      setRecordedUrl(url);
+      setChunks([]); 
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+    }
+  };
+
   const handleUpload = async () => {
-    if (chunks.length === 0) return;
+    if (chunks.length === 0 && !selectedFile) return;
     
     setIsUploading(true);
     try {
-      const blob = new Blob(chunks, { type: "video/webm" });
+      const blob = selectedFile || new Blob(chunks, { type: "video/webm" });
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not found");
 
-      const fileName = `${user.id}/${Date.now()}.webm`;
+      const extension = selectedFile ? selectedFile.name.split('.').pop() : 'webm';
+      const fileName = `${user.id}/${Date.now()}.${extension}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("videos")
         .upload(fileName, blob);
@@ -104,7 +123,7 @@ function RecordView() {
 
       const { data: signedData, error: urlError } = await supabase.storage
         .from("videos")
-        .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10); // 10 years signed URL
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10); 
 
       if (urlError || !signedData) throw urlError || new Error("Failed to create signed URL");
 
