@@ -275,5 +275,120 @@ export const uploadScriptVideo = createServerFn({ method: "POST" })
     
     if (updateError) throw updateError;
 
+
     return { success: true };
   });
+
+export const updateScriptTitle = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({
+    roteiroRowId: z.string().uuid(),
+    scriptId: z.string(),
+    newTitle: z.string().min(1)
+  }).parse(data))
+  .handler(async ({ context, data }) => {
+    const { data: existing, error: fetchError } = await context.supabase
+      .from("roteiros")
+      .select("conteudo")
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const currentScripts = existing.conteudo as any[];
+    const updatedScripts = currentScripts.map((s: any) => {
+      if (s.id === data.scriptId) {
+        return { ...s, titulo: data.newTitle };
+      }
+      return s;
+    });
+
+    const { error: updateError } = await context.supabase
+      .from("roteiros")
+      .update({ conteudo: updatedScripts })
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId);
+    
+    if (updateError) throw updateError;
+
+    return { success: true };
+  });
+
+export const deleteScriptVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({
+    roteiroRowId: z.string().uuid(),
+    scriptId: z.string(),
+    videoPath: z.string().optional().nullable() // Path in storage to delete
+  }).parse(data))
+
+  .handler(async ({ context, data }) => {
+    const { data: existing, error: fetchError } = await context.supabase
+      .from("roteiros")
+      .select("conteudo")
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const currentScripts = existing.conteudo as any[];
+    const updatedScripts = currentScripts.map((s: any) => {
+      if (s.id === data.scriptId) {
+        const { video_url, ...rest } = s;
+        return rest;
+      }
+      return s;
+    });
+
+    // 1. Update DB
+    const { error: updateError } = await context.supabase
+      .from("roteiros")
+      .update({ conteudo: updatedScripts })
+      .eq("id", data.roteiroRowId)
+      .eq("user_id", context.userId);
+    
+    if (updateError) throw updateError;
+
+    // 2. Attempt to delete from storage if path is provided
+    if (data.videoPath) {
+      await context.supabase.storage
+        .from("videos")
+        .remove([data.videoPath]);
+    }
+
+    return { success: true };
+  });
+
+export const getAllVideos = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("roteiros")
+      .select(`
+        *,
+        produto:produtos(*)
+      `)
+      .eq("user_id", context.userId);
+
+    if (error) throw error;
+
+    const videos: any[] = [];
+    data?.forEach((row: any) => {
+      if (Array.isArray(row.conteudo)) {
+        row.conteudo.forEach((script: any) => {
+          if (script.video_url) {
+            videos.push({
+              ...script,
+              roteiroRowId: row.id,
+              produto: row.produto
+            });
+          }
+        });
+      }
+    });
+
+    return videos;
+  });
+
