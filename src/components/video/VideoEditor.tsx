@@ -47,6 +47,10 @@ export interface EditorSettings {
   saturation?: number;
   fadeIn?: boolean;
   fadeOut?: boolean;
+  /** efeito dinâmico (movimento) */
+  motion?: MotionKey;
+  motionIntensity?: number;
+  motionSpeed?: number;
   texts?: TextOverlay[];
 }
 
