@@ -148,15 +148,72 @@ const DEFAULTS: EditorSettings = {
   motion: "none",
   motionIntensity: 50,
   motionSpeed: 1,
+  effects: [],
+  audioFx: { bass: 0, treble: 0, echo: 0, echoTime: 0.25, pitch: 1, preset: "none" },
   texts: [],
 };
+
+const uid = () => (globalThis.crypto?.randomUUID?.() ?? `id-${Math.random().toString(36).slice(2)}`);
+
+export function makeLayer(motion: MotionKey, patch: Partial<EffectLayer> = {}): EffectLayer {
+  return {
+    id: uid(),
+    motion,
+    intensity: 50,
+    speed: 1,
+    start: 0,
+    end: 0, // 0 = até o fim
+    enabled: true,
+    keyframes: [],
+    ...patch,
+  };
+}
+
+/** Presets prontos: combinam camadas de efeito + look de cor */
+const EFFECT_PRESETS: {
+  key: string;
+  label: string;
+  filter?: FilterKey;
+  build: () => EffectLayer[];
+}[] = [
+  { key: "viral", label: "Viral TikTok", filter: "vivid", build: () => [
+      makeLayer("zoomIn", { intensity: 40, speed: 1 }),
+      makeLayer("pulse", { intensity: 35, speed: 1.6 }),
+    ] },
+  { key: "hook", label: "Hook forte", filter: "vivid", build: () => [
+      makeLayer("slideIn", { intensity: 70, speed: 1.4 }),
+      makeLayer("flash", { intensity: 45, speed: 2 }),
+    ] },
+  { key: "cinema", label: "Cinematográfico", filter: "cinema", build: () => [
+      makeLayer("kenburns", { intensity: 30, speed: 0.6 }),
+    ] },
+  { key: "energia", label: "Energia", filter: "warm", build: () => [
+      makeLayer("shake", { intensity: 35, speed: 2 }),
+      makeLayer("pulse", { intensity: 45, speed: 2.2 }),
+    ] },
+  { key: "retro", label: "Retrô glitch", filter: "vintage", build: () => [
+      makeLayer("glitch", { intensity: 50, speed: 1.5 }),
+      makeLayer("swing", { intensity: 25, speed: 0.8 }),
+    ] },
+  { key: "suave", label: "Suave", filter: "cool", build: () => [
+      makeLayer("zoomOut", { intensity: 20, speed: 0.5 }),
+    ] },
+];
 
 function migrate(s?: EditorSettings): EditorSettings {
   if (!s) return { ...DEFAULTS };
   const merged: EditorSettings = { ...DEFAULTS, ...s };
+  merged.audioFx = { ...DEFAULTS.audioFx!, ...(s.audioFx ?? {}) };
+  if ((!merged.effects || merged.effects.length === 0) && s.motion && s.motion !== "none") {
+    merged.effects = [makeLayer(s.motion, {
+      intensity: s.motionIntensity ?? 50,
+      speed: s.motionSpeed ?? 1,
+    })];
+  }
+  merged.effects = (merged.effects ?? []).map((l) => ({ ...makeLayer(l.motion), ...l, keyframes: l.keyframes ?? [] }));
   if ((!merged.texts || merged.texts.length === 0) && s.subtitle) {
     merged.texts = [{
-      id: crypto.randomUUID(),
+      id: uid(),
       text: s.subtitle,
       start: s.startTime ?? 0,
       end: s.endTime ?? 0,
@@ -168,6 +225,24 @@ function migrate(s?: EditorSettings): EditorSettings {
   }
   return merged;
 }
+
+/** Intensidade da camada no instante `t`, interpolando keyframes. */
+export function intensityAt(layer: EffectLayer, t: number): number {
+  const kfs = [...(layer.keyframes ?? [])].sort((a, b) => a.time - b.time);
+  if (kfs.length === 0) return layer.intensity;
+  if (t <= kfs[0]!.time) return kfs[0]!.intensity;
+  if (t >= kfs[kfs.length - 1]!.time) return kfs[kfs.length - 1]!.intensity;
+  for (let i = 0; i < kfs.length - 1; i++) {
+    const a = kfs[i]!, b = kfs[i + 1]!;
+    if (t >= a.time && t <= b.time) {
+      const span = b.time - a.time || 1;
+      const r = (t - a.time) / span;
+      return a.intensity + (b.intensity - a.intensity) * r;
+    }
+  }
+  return layer.intensity;
+}
+
 
 const fmt = (t: number) => {
   if (!isFinite(t)) return "0:00.0";
