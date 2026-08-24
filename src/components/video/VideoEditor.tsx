@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useUiText } from "@/lib/uiText";
+
 
 interface VideoEditorProps {
   videoUrl: string;
@@ -278,19 +280,21 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
   };
 
   const selectedText = (settings.texts ?? []).find((t) => t.id === selectedTextId) ?? null;
+  const { t: ui } = useUiText();
 
   return (
-    <div className="space-y-4 w-full min-w-0">
+    <div className="space-y-3 sm:space-y-4 w-full min-w-0 overflow-x-hidden">
       {/* PREVIEW */}
       <div className="flex justify-center">
         <div
           className={cn(
-            "relative bg-black rounded-xl overflow-hidden border border-[#D4AF37]/20 group w-full max-h-[45dvh]",
+            "relative bg-black rounded-xl overflow-hidden border border-[#D4AF37]/20 group w-full max-h-[34dvh] sm:max-h-[45dvh]",
             ASPECTS[settings.aspect ?? "original"],
-            settings.aspect === "9:16" && "max-w-[280px]",
-            settings.aspect === "1:1" && "max-w-[440px]"
+            settings.aspect === "9:16" && "max-w-[200px] sm:max-w-[280px]",
+            settings.aspect === "1:1" && "max-w-[320px] sm:max-w-[440px]"
           )}
         >
+
           <video
             ref={videoRef}
             src={videoUrl}
@@ -321,22 +325,23 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
             </div>
           ))}
 
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/30 pointer-events-none">
-            <div className="pointer-events-auto flex items-center gap-3">
-              <Button size="icon" variant="ghost" className="h-10 w-10 rounded-full bg-black/60 text-[#D4AF37]"
+          <div className="absolute inset-0 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-black/30 pointer-events-none">
+            <div className="pointer-events-auto flex items-center gap-2 sm:gap-3">
+              <Button size="icon" variant="ghost" className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/60 text-[#D4AF37]"
                 onClick={() => seek(currentTime - 1)}>
                 <SkipBack className="h-4 w-4" />
               </Button>
               <Button size="icon" variant="ghost"
-                className="h-14 w-14 rounded-full bg-[#D4AF37] text-black hover:bg-[#B8962E]" onClick={togglePlay}>
-                {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 fill-current" />}
+                className="h-11 w-11 sm:h-14 sm:w-14 rounded-full bg-[#D4AF37] text-black hover:bg-[#B8962E]" onClick={togglePlay}>
+                {isPlaying ? <Pause className="h-6 w-6 sm:h-7 sm:w-7" /> : <Play className="h-6 w-6 sm:h-7 sm:w-7 fill-current" />}
               </Button>
-              <Button size="icon" variant="ghost" className="h-10 w-10 rounded-full bg-black/60 text-[#D4AF37]"
+              <Button size="icon" variant="ghost" className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-black/60 text-[#D4AF37]"
                 onClick={() => seek(currentTime + 1)}>
                 <SkipForward className="h-4 w-4" />
               </Button>
             </div>
           </div>
+
 
           <div className="absolute top-2 right-3 text-[10px] font-mono text-[#D4AF37] bg-black/60 px-2 py-0.5 rounded">
             {fmt(currentTime)} / {fmt(duration)}
@@ -345,11 +350,12 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
       </div>
 
       {/* TIMELINE */}
-      <Card className="bg-[#0A0A0A] border-[#D4AF37]/20">
-        <CardContent className="p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest text-[#D4AF37]/60">Linha do tempo</span>
-            <div className="flex items-center gap-1">
+      <Card className="bg-[#0A0A0A] border-[#D4AF37]/20 overflow-hidden">
+        <CardContent className="p-2 sm:p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] uppercase tracking-widest text-[#D4AF37]/60 truncate min-w-0">{ui("editor.timeline.title")}</span>
+
+            <div className="flex items-center gap-1 shrink-0">
               <Button size="icon" variant="ghost" className="h-7 w-7 text-[#D4AF37]"
                 onClick={() => setZoom((z) => Math.max(1, z - 0.5))}><ZoomOut className="h-3.5 w-3.5" /></Button>
               <span className="text-[10px] text-[#D4AF37]/60 w-8 text-center">{zoom}x</span>
@@ -362,7 +368,8 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
             <div className="relative select-none" style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
               {/* video track */}
               <div
-                className="relative h-14 rounded-md bg-gradient-to-r from-[#1a1a1a] to-[#111] border border-[#262626] overflow-hidden"
+                className="relative h-10 sm:h-14 rounded-md bg-gradient-to-r from-[#1a1a1a] to-[#111] border border-[#262626] overflow-hidden"
+
                 onMouseDown={(e) => { setDrag("playhead"); seek(timeFromEvent(e.clientX)); }}
               >
                 <div className="absolute inset-0 flex">
@@ -418,38 +425,40 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                   </button>
                 ))}
                 {(settings.texts ?? []).length === 0 && (
-                  <span className="absolute inset-0 flex items-center pl-3 text-[10px] text-[#D4AF37]/40">
-                    Faixa de textos — adicione legendas na aba Texto
+                  <span className="absolute inset-0 flex items-center pl-3 pr-2 text-[10px] text-[#D4AF37]/40 truncate">
+                    {ui("editor.timeline.textTrackEmpty")}
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex justify-between text-[10px] font-mono text-[#D4AF37]/60">
-            <span>Início {fmt(settings.startTime)}</span>
-            <span>Duração final {fmt(Math.max(0, ((settings.endTime || duration) - settings.startTime) / (settings.speed ?? 1)))}</span>
-            <span>Fim {fmt(settings.endTime || duration)}</span>
+          <div className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-[10px] font-mono text-[#D4AF37]/60">
+            <span>{ui("editor.timeline.start")} {fmt(settings.startTime)}</span>
+            <span>{ui("editor.timeline.finalDuration")} {fmt(Math.max(0, ((settings.endTime || duration) - settings.startTime) / (settings.speed ?? 1)))}</span>
+            <span>{ui("editor.timeline.end")} {fmt(settings.endTime || duration)}</span>
           </div>
+
         </CardContent>
       </Card>
 
       {/* TOOLS */}
       <Tabs defaultValue="cortar">
-        <TabsList className="bg-[#0A0A0A] border border-[#D4AF37]/20 w-full grid grid-cols-4">
-          <TabsTrigger value="cortar" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs">
-            <Scissors className="h-3.5 w-3.5 mr-1" /> Cortar
+        <TabsList className="bg-[#0A0A0A] border border-[#D4AF37]/20 w-full grid grid-cols-4 h-auto p-1">
+          <TabsTrigger value="cortar" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
+            <Scissors className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.cortar")}</span>
           </TabsTrigger>
-          <TabsTrigger value="texto" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs">
-            <Type className="h-3.5 w-3.5 mr-1" /> Texto
+          <TabsTrigger value="texto" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
+            <Type className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.texto")}</span>
           </TabsTrigger>
-          <TabsTrigger value="audio" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs">
-            <Volume2 className="h-3.5 w-3.5 mr-1" /> Áudio
+          <TabsTrigger value="audio" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
+            <Volume2 className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.audio")}</span>
           </TabsTrigger>
-          <TabsTrigger value="efeitos" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-xs">
-            <Sparkles className="h-3.5 w-3.5 mr-1" /> Efeitos
+          <TabsTrigger value="efeitos" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
+            <Sparkles className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.efeitos")}</span>
           </TabsTrigger>
         </TabsList>
+
 
         {/* CORTAR */}
         <TabsContent value="cortar">
@@ -641,16 +650,17 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
         </TabsContent>
       </Tabs>
 
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <Button onClick={handleSave} disabled={isSaving} className="flex-1 bg-[#D4AF37] text-black hover:bg-[#B8962E]">
           {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Salvar edição
+          {ui("editor.save")}
         </Button>
         <Button variant="outline" onClick={() => { setSettings({ ...DEFAULTS, endTime: duration }); seek(0); }}
           className="border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10">
-          <RotateCcw className="mr-2 h-4 w-4" /> Resetar
+          <RotateCcw className="mr-2 h-4 w-4" /> {ui("editor.reset")}
         </Button>
       </div>
+
     </div>
   );
 }
