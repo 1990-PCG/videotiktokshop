@@ -325,7 +325,7 @@ function RoteirosIndexView() {
       />
 
       <Dialog open={!!editingSettingsVideo} onOpenChange={(open) => !open && setEditingSettingsVideo(null)}>
-        <DialogContent className="max-w-4xl bg-[#121212] border-[#D4AF37]/20 text-[#FAFAFA]">
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[92dvh] overflow-y-auto p-4 sm:p-6 bg-[#121212] border-[#D4AF37]/20 text-[#FAFAFA]">
           <DialogHeader>
             <DialogTitle className="text-[#D4AF37] font-light">
               Editar Vídeo: {editingSettingsVideo?.titulo || "Sem título"}

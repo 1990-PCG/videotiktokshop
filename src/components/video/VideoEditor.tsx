@@ -280,12 +280,12 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
   const selectedText = (settings.texts ?? []).find((t) => t.id === selectedTextId) ?? null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 w-full min-w-0">
       {/* PREVIEW */}
       <div className="flex justify-center">
         <div
           className={cn(
-            "relative bg-black rounded-xl overflow-hidden border border-[#D4AF37]/20 group w-full",
+            "relative bg-black rounded-xl overflow-hidden border border-[#D4AF37]/20 group w-full max-h-[45dvh]",
             ASPECTS[settings.aspect ?? "original"],
             settings.aspect === "9:16" && "max-w-[280px]",
             settings.aspect === "1:1" && "max-w-[440px]"
