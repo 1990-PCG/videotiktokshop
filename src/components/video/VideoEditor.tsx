@@ -381,28 +381,158 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
     return 1;
   }, [currentTime, settings.fadeIn, settings.fadeOut, settings.startTime, settings.endTime, duration]);
 
-  const motionStyle = useMemo<React.CSSProperties>(() => {
-    const key = (settings.motion ?? "none") as MotionKey;
-    const m = MOTIONS[key];
-    if (!m || !m.anim) return {};
-    const i = (settings.motionIntensity ?? 50) / 100; // 0..1
-    const speed = settings.motionSpeed ?? 1;
-    const dur = m.loop ? Math.max(0.25, 1.6 / speed) : Math.max(1, 6 / speed);
-    return {
-      animationName: m.anim,
-      animationDuration: `${dur}s`,
-      animationTimingFunction: key === "shake" || key === "glitch" ? "steps(4, end)" : "ease-in-out",
-      animationIterationCount: m.loop ? "infinite" : 1,
-      animationFillMode: "both",
-      animationPlayState: isPlaying ? "running" : "paused",
-      transformOrigin: "center",
-      willChange: "transform, filter",
-      ["--ve-amt" as string]: 1 + 0.35 * i,
-      ["--ve-px" as string]: `${Math.round(2 + 14 * i)}px`,
-      ["--ve-deg" as string]: `${(0.5 + 4 * i).toFixed(2)}deg`,
-      ["--ve-bright" as string]: 1 + 1.2 * i,
-    };
-  }, [settings.motion, settings.motionIntensity, settings.motionSpeed, isPlaying]);
+  const layers = settings.effects ?? [];
+
+  /** Estilos das camadas ativas, na ordem de aplicação (índice 0 = camada mais externa). */
+  const layerStyles = useMemo(() => {
+    return layers
+      .filter((l) => {
+        if (!l.enabled) return false;
+        if (!MOTIONS[l.motion]?.anim) return false;
+        const end = l.end || (settings.endTime || duration) || Infinity;
+        return currentTime >= (l.start ?? 0) && currentTime <= end;
+      })
+      .map((l) => {
+        const m = MOTIONS[l.motion];
+        const i = Math.max(0, Math.min(100, intensityAt(l, currentTime))) / 100;
+        const speed = l.speed || 1;
+        const dur = m.loop ? Math.max(0.25, 1.6 / speed) : Math.max(1, 6 / speed);
+        const style: React.CSSProperties = {
+          animationName: m.anim,
+          animationDuration: `${dur}s`,
+          animationTimingFunction: l.motion === "shake" || l.motion === "glitch" ? "steps(4, end)" : "ease-in-out",
+          animationIterationCount: m.loop ? "infinite" : 1,
+          animationFillMode: "both",
+          animationPlayState: isPlaying ? "running" : "paused",
+          transformOrigin: "center",
+          willChange: "transform, filter",
+          ["--ve-amt" as string]: 1 + 0.35 * i,
+          ["--ve-px" as string]: `${Math.round(2 + 14 * i)}px`,
+          ["--ve-deg" as string]: `${(0.5 + 4 * i).toFixed(2)}deg`,
+          ["--ve-bright" as string]: 1 + 1.2 * i,
+        };
+        return { id: l.id, style };
+      });
+  }, [layers, currentTime, isPlaying, duration, settings.endTime]);
+
+  // ---- camadas de efeito ----
+  const addLayer = (motion: MotionKey) =>
+    setSettings((s) => ({ ...s, effects: [...(s.effects ?? []), makeLayer(motion, { end: s.endTime || 0 })] }));
+
+  const updateLayer = (id: string, patch: Partial<EffectLayer>) =>
+    setSettings((s) => ({ ...s, effects: (s.effects ?? []).map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+
+  const removeLayer = (id: string) =>
+    setSettings((s) => ({ ...s, effects: (s.effects ?? []).filter((l) => l.id !== id) }));
+
+  const moveLayer = (id: string, dir: -1 | 1) =>
+    setSettings((s) => {
+      const arr = [...(s.effects ?? [])];
+      const i = arr.findIndex((l) => l.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= arr.length) return s;
+      [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+      return { ...s, effects: arr };
+    });
+
+  const applyPreset = (key: string) => {
+    const p = EFFECT_PRESETS.find((x) => x.key === key);
+    if (!p) return;
+    setSettings((s) => ({
+      ...s,
+      filter: p.filter ?? s.filter,
+      effects: p.build().map((l) => ({ ...l, end: s.endTime || 0 })),
+    }));
+    toast.success(`Preset "${p.label}" aplicado`);
+  };
+
+  // ---- keyframes ----
+  const addKeyframe = (layerId: string) =>
+    setSettings((s) => ({
+      ...s,
+      effects: (s.effects ?? []).map((l) =>
+        l.id === layerId
+          ? {
+              ...l,
+              keyframes: [...(l.keyframes ?? []), { id: uid(), time: Math.round(currentTime * 10) / 10, intensity: l.intensity }]
+                .sort((a, b) => a.time - b.time),
+            }
+          : l
+      ),
+    }));
+
+  const updateKeyframe = (layerId: string, kfId: string, patch: Partial<EffectKeyframe>) =>
+    setSettings((s) => ({
+      ...s,
+      effects: (s.effects ?? []).map((l) =>
+        l.id === layerId
+          ? { ...l, keyframes: (l.keyframes ?? []).map((k) => (k.id === kfId ? { ...k, ...patch } : k)).sort((a, b) => a.time - b.time) }
+          : l
+      ),
+    }));
+
+  const removeKeyframe = (layerId: string, kfId: string) =>
+    setSettings((s) => ({
+      ...s,
+      effects: (s.effects ?? []).map((l) =>
+        l.id === layerId ? { ...l, keyframes: (l.keyframes ?? []).filter((k) => k.id !== kfId) } : l
+      ),
+    }));
+
+  // ---- áudio (Web Audio) ----
+  const audioRef = useRef<{
+    ctx: AudioContext;
+    bass: BiquadFilterNode;
+    treble: BiquadFilterNode;
+    delay: DelayNode;
+    feedback: GainNode;
+    wet: GainNode;
+  } | null>(null);
+
+  const ensureAudioGraph = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || audioRef.current) return audioRef.current;
+    try {
+      const Ctx = window.AudioContext ?? (window as any).webkitAudioContext;
+      if (!Ctx) return null;
+      const ctx: AudioContext = new Ctx();
+      const src = ctx.createMediaElementSource(v);
+      const bass = ctx.createBiquadFilter(); bass.type = "lowshelf"; bass.frequency.value = 200;
+      const treble = ctx.createBiquadFilter(); treble.type = "highshelf"; treble.frequency.value = 3000;
+      const delay = ctx.createDelay(1.5);
+      const feedback = ctx.createGain(); feedback.gain.value = 0.35;
+      const wet = ctx.createGain(); wet.gain.value = 0;
+      src.connect(bass); bass.connect(treble);
+      treble.connect(ctx.destination);
+      treble.connect(delay); delay.connect(feedback); feedback.connect(delay);
+      delay.connect(wet); wet.connect(ctx.destination);
+      audioRef.current = { ctx, bass, treble, delay, feedback, wet };
+      return audioRef.current;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const g = audioRef.current;
+    const fx = settings.audioFx;
+    if (!g || !fx) return;
+    g.bass.gain.value = fx.bass ?? 0;
+    g.treble.gain.value = fx.treble ?? 0;
+    g.delay.delayTime.value = Math.min(1.4, Math.max(0.05, fx.echoTime ?? 0.25));
+    g.wet.gain.value = Math.max(0, Math.min(1, (fx.echo ?? 0) / 100));
+  }, [settings.audioFx]);
+
+  const setAudioFx = (patch: Partial<AudioFx>) => {
+    ensureAudioGraph();
+    setSettings((s) => ({ ...s, audioFx: { ...(s.audioFx ?? DEFAULTS.audioFx!), ...patch } }));
+  };
+
+  const applyAudioPreset = (key: AudioPresetKey) => {
+    ensureAudioGraph();
+    setSettings((s) => ({ ...s, audioFx: { ...AUDIO_PRESETS[key].fx, preset: key } }));
+  };
+
 
 
   const addText = () => {
