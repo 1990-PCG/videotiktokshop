@@ -47,12 +47,55 @@ export interface EditorSettings {
   saturation?: number;
   fadeIn?: boolean;
   fadeOut?: boolean;
-  /** efeito dinâmico (movimento) */
+  /** efeito dinâmico (legado — migrado para `effects`) */
   motion?: MotionKey;
   motionIntensity?: number;
   motionSpeed?: number;
+  /** pilha de efeitos dinâmicos (ordem de aplicação: do primeiro ao último) */
+  effects?: EffectLayer[];
+  /** efeitos de áudio */
+  audioFx?: AudioFx;
   texts?: TextOverlay[];
 }
+
+export interface EffectKeyframe {
+  id: string;
+  time: number;      // segundos
+  intensity: number; // 0-100
+}
+
+export interface EffectLayer {
+  id: string;
+  motion: MotionKey;
+  intensity: number;
+  speed: number;
+  start: number;
+  end: number;
+  enabled: boolean;
+  keyframes: EffectKeyframe[];
+}
+
+export interface AudioFx {
+  bass: number;     // -15..15 dB
+  treble: number;   // -15..15 dB
+  echo: number;     // 0..100 (%)
+  echoTime: number; // 0.05..1 s
+  pitch: number;    // 0.5..2 (via playbackRate do áudio = velocidade do vídeo, aqui é detune simulado)
+  preset?: AudioPresetKey;
+}
+
+type AudioPresetKey = "none" | "podcast" | "radio" | "cinema" | "grave" | "telefone" | "arena";
+
+const AUDIO_PRESETS: Record<AudioPresetKey, { label: string; fx: Omit<AudioFx, "preset"> }> = {
+  none:     { label: "Original",  fx: { bass: 0, treble: 0, echo: 0, echoTime: 0.25, pitch: 1 } },
+  podcast:  { label: "Podcast",   fx: { bass: 3, treble: 4, echo: 0, echoTime: 0.2, pitch: 1 } },
+  radio:    { label: "Rádio",     fx: { bass: 6, treble: 6, echo: 8, echoTime: 0.15, pitch: 1 } },
+  cinema:   { label: "Cinema",    fx: { bass: 8, treble: 2, echo: 18, echoTime: 0.35, pitch: 1 } },
+  grave:    { label: "Grave",     fx: { bass: 12, treble: -4, echo: 0, echoTime: 0.25, pitch: 1 } },
+  telefone: { label: "Telefone",  fx: { bass: -12, treble: -6, echo: 0, echoTime: 0.2, pitch: 1 } },
+  arena:    { label: "Arena",     fx: { bass: 4, treble: 1, echo: 45, echoTime: 0.5, pitch: 1 } },
+};
+
 
 type FilterKey = "none" | "vivid" | "cinema" | "bw" | "vintage" | "cool" | "warm";
 
