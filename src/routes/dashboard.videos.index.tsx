@@ -201,7 +201,7 @@ function MyVideosView() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {videos.map((video) => (
+        {(videos ?? []).map((video) => (
           <Card key={video.id} className="bg-[#121212] border-[#D4AF37]/20 overflow-hidden group">
             <div className="aspect-video bg-black relative flex items-center justify-center">
               <video 
