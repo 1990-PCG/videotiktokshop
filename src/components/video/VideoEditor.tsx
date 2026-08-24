@@ -695,6 +695,44 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                     onValueChange={(v) => set(key, v[0] ?? 100)} />
                 </div>
               ))}
+
+              {/* EFEITOS DINÂMICOS */}
+              <div className="space-y-3 pt-2 border-t border-[#D4AF37]/15">
+                <Label className="text-[#FAFAFA] text-sm">Efeito dinâmico</Label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {(Object.keys(MOTIONS) as MotionKey[]).map((k) => (
+                    <Button key={k} size="sm" variant="outline"
+                      className={cn("h-8 text-[11px] px-1 truncate", (settings.motion ?? "none") === k
+                        ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
+                        : "border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10")}
+                      onClick={() => set("motion", k)}>{MOTIONS[k].label}</Button>
+                  ))}
+                </div>
+
+                {(settings.motion ?? "none") !== "none" && (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-[#FAFAFA] text-sm">Intensidade</Label>
+                        <span className="text-[10px] text-[#D4AF37]/60">{settings.motionIntensity ?? 50}%</span>
+                      </div>
+                      <Slider min={10} max={100} step={5} value={[settings.motionIntensity ?? 50]}
+                        onValueChange={(v) => set("motionIntensity", v[0] ?? 50)} />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-[#FAFAFA] text-sm">Velocidade do efeito</Label>
+                        <span className="text-[10px] text-[#D4AF37]/60">{(settings.motionSpeed ?? 1).toFixed(1)}x</span>
+                      </div>
+                      <Slider min={0.5} max={3} step={0.1} value={[settings.motionSpeed ?? 1]}
+                        onValueChange={(v) => set("motionSpeed", v[0] ?? 1)} />
+                    </div>
+                    <p className="text-[10px] text-[#D4AF37]/50">
+                      Dê play no preview para ver o efeito em movimento.
+                    </p>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
