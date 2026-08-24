@@ -311,12 +311,22 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
     const v = videoRef.current;
     if (!v) return;
     if (isPlaying) { v.pause(); setIsPlaying(false); return; }
+    const g = ensureAudioGraph();
+    if (g) {
+      void g.ctx.resume();
+      const fx = settings.audioFx ?? DEFAULTS.audioFx!;
+      g.bass.gain.value = fx.bass ?? 0;
+      g.treble.gain.value = fx.treble ?? 0;
+      g.delay.delayTime.value = Math.min(1.4, Math.max(0.05, fx.echoTime ?? 0.25));
+      g.wet.gain.value = Math.max(0, Math.min(1, (fx.echo ?? 0) / 100));
+    }
     if (v.currentTime < settings.startTime || v.currentTime >= (settings.endTime || duration)) {
       v.currentTime = settings.startTime;
     }
     void v.play();
     setIsPlaying(true);
   };
+
 
   const seek = (t: number) => {
     const v = videoRef.current;
