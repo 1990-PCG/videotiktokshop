@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAllVideos, deleteScriptVideo, updateScriptTitle, updateScriptVideoSettings } from "@/lib/roteiros.functions";
+import { getAllVideos, deleteScriptVideo, updateScriptTitle, updateScriptVideoSettings, importExternalVideo } from "@/lib/roteiros.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoEditor, EditorSettings } from "@/components/video/VideoEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X, Scissors } from "lucide-react";
-import { useState } from "react";
+import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X, Scissors, Upload } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/dashboard/videos/")({
   component: MyVideosView,
@@ -70,6 +71,76 @@ function MyVideosView() {
     },
   });
 
+  const importFn = useServerFn(importExternalVideo);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("video/")) {
+      toast.error("Selecione um arquivo de vídeo.");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
+
+      const extension = file.name.split(".").pop() || "mp4";
+      const fileName = `${user.id}/import-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("videos")
+        .upload(fileName, file, { contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: signedData, error: urlError } = await supabase.storage
+        .from("videos")
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10);
+      if (urlError || !signedData) throw urlError || new Error("Não foi possível gerar o link do vídeo.");
+
+      const titulo = file.name.replace(/\.[^.]+$/, "");
+      const result = await importFn({ data: { titulo, videoUrl: signedData.signedUrl } });
+
+      await queryClient.invalidateQueries({ queryKey: ["my-videos"] });
+      toast.success("Vídeo importado! Abrindo o editor...");
+      setEditingSettingsVideo({
+        id: result.scriptId,
+        roteiroRowId: result.roteiroRowId,
+        titulo,
+        video_url: signedData.signedUrl,
+        video_settings: null,
+      });
+    } catch (error: any) {
+      toast.error("Erro ao importar vídeo: " + (error?.message || "tente novamente"));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const importButton = (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleImportFile}
+      />
+      <Button
+        className="bg-[#D4AF37] hover:bg-[#B8962E] text-black font-medium"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isImporting}
+      >
+        {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+        {isImporting ? "Importando..." : "Importar Vídeo"}
+      </Button>
+    </>
+  );
+
   const handleEdit = (video: any) => {
     setEditingId(video.id);
     setEditValue(video.titulo || "");
@@ -110,26 +181,27 @@ function MyVideosView() {
     return <div className="text-[#D4AF37] animate-pulse">Carregando seus vídeos...</div>;
   }
 
-  if (!videos || videos.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <VideoIcon className="h-16 w-16 text-[#D4AF37]/20 mb-6" />
-        <h3 className="text-[#FAFAFA] text-xl font-light mb-2">Nenhum vídeo gravado</h3>
-        <p className="text-[#FAFAFA]/60 max-w-xs">
-          Grave vídeos a partir dos seus roteiros na aba "Roteiros Gerados".
-        </p>
-      </div>
-    );
-  }
+  const isEmpty = !videos || videos.length === 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
         <h2 className="text-[#D4AF37] text-2xl font-light">Meus Vídeos</h2>
+        {importButton}
       </div>
 
+      {isEmpty && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <VideoIcon className="h-16 w-16 text-[#D4AF37]/20 mb-6" />
+          <h3 className="text-[#FAFAFA] text-xl font-light mb-2">Nenhum vídeo ainda</h3>
+          <p className="text-[#FAFAFA]/60 max-w-xs">
+            Grave vídeos a partir dos seus roteiros ou importe um vídeo do seu computador ou celular.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {videos.map((video) => (
+        {(videos ?? []).map((video) => (
           <Card key={video.id} className="bg-[#121212] border-[#D4AF37]/20 overflow-hidden group">
             <div className="aspect-video bg-black relative flex items-center justify-center">
               <video 
