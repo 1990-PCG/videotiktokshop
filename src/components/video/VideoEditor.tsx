@@ -343,14 +343,16 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
           )}
         >
 
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="w-full h-full object-contain"
-            style={{ filter: cssFilter, opacity: fadeOpacity }}
-            playsInline
-            onClick={togglePlay}
-          />
+          <div className="absolute inset-0 overflow-hidden" style={motionStyle}>
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              className="w-full h-full object-contain"
+              style={{ filter: cssFilter, opacity: fadeOpacity }}
+              playsInline
+              onClick={togglePlay}
+            />
+          </div>
 
           {activeTexts.map((t) => (
             <div
