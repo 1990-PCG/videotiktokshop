@@ -181,23 +181,24 @@ function MyVideosView() {
     return <div className="text-[#D4AF37] animate-pulse">Carregando seus vídeos...</div>;
   }
 
-  if (!videos || videos.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <VideoIcon className="h-16 w-16 text-[#D4AF37]/20 mb-6" />
-        <h3 className="text-[#FAFAFA] text-xl font-light mb-2">Nenhum vídeo gravado</h3>
-        <p className="text-[#FAFAFA]/60 max-w-xs">
-          Grave vídeos a partir dos seus roteiros na aba "Roteiros Gerados".
-        </p>
-      </div>
-    );
-  }
+  const isEmpty = !videos || videos.length === 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-8">
         <h2 className="text-[#D4AF37] text-2xl font-light">Meus Vídeos</h2>
+        {importButton}
       </div>
+
+      {isEmpty && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <VideoIcon className="h-16 w-16 text-[#D4AF37]/20 mb-6" />
+          <h3 className="text-[#FAFAFA] text-xl font-light mb-2">Nenhum vídeo ainda</h3>
+          <p className="text-[#FAFAFA]/60 max-w-xs">
+            Grave vídeos a partir dos seus roteiros ou importe um vídeo do seu computador ou celular.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {videos.map((video) => (
