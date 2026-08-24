@@ -48,3 +48,42 @@
     @apply focus:ring-1 focus:ring-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all;
   }
 }
+
+/* ===== Efeitos dinâmicos do editor de vídeo ===== */
+@keyframes ve-zoom-in { from { transform: scale(1); } to { transform: scale(var(--ve-amt, 1.15)); } }
+@keyframes ve-zoom-out { from { transform: scale(var(--ve-amt, 1.15)); } to { transform: scale(1); } }
+@keyframes ve-kenburns {
+  0% { transform: scale(1) translate(0, 0); }
+  50% { transform: scale(var(--ve-amt, 1.12)) translate(-2%, -2%); }
+  100% { transform: scale(1) translate(0, 0); }
+}
+@keyframes ve-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(var(--ve-amt, 1.06)); }
+}
+@keyframes ve-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(calc(var(--ve-px, 6px) * -1), var(--ve-px, 6px)) rotate(-0.6deg); }
+  50% { transform: translate(var(--ve-px, 6px), calc(var(--ve-px, 6px) * -1)) rotate(0.6deg); }
+  75% { transform: translate(calc(var(--ve-px, 6px) * -1), 0) rotate(-0.3deg); }
+}
+@keyframes ve-swing {
+  0%, 100% { transform: rotate(calc(var(--ve-deg, 1.5deg) * -1)) scale(1.04); }
+  50% { transform: rotate(var(--ve-deg, 1.5deg)) scale(1.04); }
+}
+@keyframes ve-glitch {
+  0%, 100% { transform: translate(0, 0); filter: none; }
+  20% { transform: translate(var(--ve-px, 6px), 0); }
+  40% { transform: translate(calc(var(--ve-px, 6px) * -1), 0); }
+  41% { opacity: 0.75; }
+  60% { transform: translate(0, calc(var(--ve-px, 6px) * -1)); }
+  80% { transform: translate(0, var(--ve-px, 6px)); }
+}
+@keyframes ve-flash {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(var(--ve-bright, 1.6)); }
+}
+@keyframes ve-slide-in {
+  from { transform: translateX(30%) scale(1.1); }
+  to { transform: translateX(0) scale(1); }
+}
