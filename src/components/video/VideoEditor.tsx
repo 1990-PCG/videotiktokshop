@@ -66,6 +66,23 @@ const FILTERS: Record<FilterKey, { label: string; css: string }> = {
   warm: { label: "Quente", css: "hue-rotate(12deg) saturate(1.2) brightness(1.05)" },
 };
 
+type MotionKey =
+  | "none" | "zoomIn" | "zoomOut" | "kenburns" | "pulse"
+  | "shake" | "swing" | "glitch" | "flash" | "slideIn";
+
+const MOTIONS: Record<MotionKey, { label: string; anim: string; loop: boolean }> = {
+  none: { label: "Nenhum", anim: "", loop: false },
+  zoomIn: { label: "Zoom in", anim: "ve-zoom-in", loop: false },
+  zoomOut: { label: "Zoom out", anim: "ve-zoom-out", loop: false },
+  kenburns: { label: "Ken Burns", anim: "ve-kenburns", loop: true },
+  pulse: { label: "Batida", anim: "ve-pulse", loop: true },
+  shake: { label: "Tremor", anim: "ve-shake", loop: true },
+  swing: { label: "Balanço", anim: "ve-swing", loop: true },
+  glitch: { label: "Glitch", anim: "ve-glitch", loop: true },
+  flash: { label: "Flash", anim: "ve-flash", loop: true },
+  slideIn: { label: "Entrada", anim: "ve-slide-in", loop: false },
+};
+
 const ASPECTS: Record<NonNullable<EditorSettings["aspect"]>, string> = {
   original: "aspect-video",
   "9:16": "aspect-[9/16]",
