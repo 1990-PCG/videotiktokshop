@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAllVideos, deleteScriptVideo, updateScriptTitle, updateScriptVideoSettings } from "@/lib/roteiros.functions";
+import { getAllVideos, deleteScriptVideo, updateScriptTitle, updateScriptVideoSettings, importExternalVideo } from "@/lib/roteiros.functions";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { VideoEditor, EditorSettings } from "@/components/video/VideoEditor";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X, Scissors } from "lucide-react";
-import { useState } from "react";
+import { Trash2, Edit2, Play, Download, Video as VideoIcon, Loader2, Check, X, Scissors, Upload } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/dashboard/videos/")({
   component: MyVideosView,
