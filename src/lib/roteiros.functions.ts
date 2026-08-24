@@ -428,3 +428,78 @@ export const getAllVideos = createServerFn({ method: "GET" })
     return videos;
   });
 
+
+export const importExternalVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data) => z.object({
+    titulo: z.string().min(1),
+    videoUrl: z.string().url(),
+  }).parse(data))
+  .handler(async ({ context, data }) => {
+    const IMPORT_PRODUCT_NAME = "Vídeos Importados";
+
+    let produtoId: string | null = null;
+    const { data: existingProduct } = await context.supabase
+      .from("produtos")
+      .select("id")
+      .eq("user_id", context.userId)
+      .eq("nome", IMPORT_PRODUCT_NAME)
+      .maybeSingle();
+
+    if (existingProduct) {
+      produtoId = existingProduct.id;
+    } else {
+      const { data: newProduct, error: productError } = await context.supabase
+        .from("produtos")
+        .insert({
+          user_id: context.userId,
+          nome: IMPORT_PRODUCT_NAME,
+          descricao: "Vídeos enviados do computador ou celular",
+        })
+        .select("id")
+        .single();
+      if (productError) throw productError;
+      produtoId = newProduct.id;
+    }
+
+    const script = {
+      id: crypto.randomUUID(),
+      titulo: data.titulo,
+      roteiro: "",
+      video_url: data.videoUrl,
+      importado: true,
+    };
+
+    const { data: existingRow } = await context.supabase
+      .from("roteiros")
+      .select("id, conteudo")
+      .eq("user_id", context.userId)
+      .eq("produto_id", produtoId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingRow) {
+      const current = Array.isArray(existingRow.conteudo) ? (existingRow.conteudo as any[]) : [];
+      const { error } = await context.supabase
+        .from("roteiros")
+        .update({ conteudo: [...current, script] })
+        .eq("id", existingRow.id)
+        .eq("user_id", context.userId);
+      if (error) throw error;
+      return { success: true, roteiroRowId: existingRow.id, scriptId: script.id };
+    }
+
+    const { data: newRow, error: insertError } = await context.supabase
+      .from("roteiros")
+      .insert({
+        user_id: context.userId,
+        produto_id: produtoId,
+        conteudo: [script],
+      })
+      .select("id")
+      .single();
+    if (insertError) throw insertError;
+
+    return { success: true, roteiroRowId: newRow.id, scriptId: script.id };
+  });
