@@ -47,6 +47,10 @@ export interface EditorSettings {
   saturation?: number;
   fadeIn?: boolean;
   fadeOut?: boolean;
+  /** efeito dinâmico (movimento) */
+  motion?: MotionKey;
+  motionIntensity?: number;
+  motionSpeed?: number;
   texts?: TextOverlay[];
 }
 
@@ -60,6 +64,23 @@ const FILTERS: Record<FilterKey, { label: string; css: string }> = {
   vintage: { label: "Vintage", css: "sepia(0.45) contrast(0.95) saturate(1.2)" },
   cool: { label: "Frio", css: "hue-rotate(-12deg) saturate(1.1)" },
   warm: { label: "Quente", css: "hue-rotate(12deg) saturate(1.2) brightness(1.05)" },
+};
+
+type MotionKey =
+  | "none" | "zoomIn" | "zoomOut" | "kenburns" | "pulse"
+  | "shake" | "swing" | "glitch" | "flash" | "slideIn";
+
+const MOTIONS: Record<MotionKey, { label: string; anim: string; loop: boolean }> = {
+  none: { label: "Nenhum", anim: "", loop: false },
+  zoomIn: { label: "Zoom in", anim: "ve-zoom-in", loop: false },
+  zoomOut: { label: "Zoom out", anim: "ve-zoom-out", loop: false },
+  kenburns: { label: "Ken Burns", anim: "ve-kenburns", loop: true },
+  pulse: { label: "Batida", anim: "ve-pulse", loop: true },
+  shake: { label: "Tremor", anim: "ve-shake", loop: true },
+  swing: { label: "Balanço", anim: "ve-swing", loop: true },
+  glitch: { label: "Glitch", anim: "ve-glitch", loop: true },
+  flash: { label: "Flash", anim: "ve-flash", loop: true },
+  slideIn: { label: "Entrada", anim: "ve-slide-in", loop: false },
 };
 
 const ASPECTS: Record<NonNullable<EditorSettings["aspect"]>, string> = {
@@ -81,6 +102,9 @@ const DEFAULTS: EditorSettings = {
   saturation: 100,
   fadeIn: false,
   fadeOut: false,
+  motion: "none",
+  motionIntensity: 50,
+  motionSpeed: 1,
   texts: [],
 };
 
@@ -239,6 +263,30 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
     return 1;
   }, [currentTime, settings.fadeIn, settings.fadeOut, settings.startTime, settings.endTime, duration]);
 
+  const motionStyle = useMemo<React.CSSProperties>(() => {
+    const key = (settings.motion ?? "none") as MotionKey;
+    const m = MOTIONS[key];
+    if (!m || !m.anim) return {};
+    const i = (settings.motionIntensity ?? 50) / 100; // 0..1
+    const speed = settings.motionSpeed ?? 1;
+    const dur = m.loop ? Math.max(0.25, 1.6 / speed) : Math.max(1, 6 / speed);
+    return {
+      animationName: m.anim,
+      animationDuration: `${dur}s`,
+      animationTimingFunction: key === "shake" || key === "glitch" ? "steps(4, end)" : "ease-in-out",
+      animationIterationCount: m.loop ? "infinite" : 1,
+      animationFillMode: "both",
+      animationPlayState: isPlaying ? "running" : "paused",
+      transformOrigin: "center",
+      willChange: "transform, filter",
+      ["--ve-amt" as string]: 1 + 0.35 * i,
+      ["--ve-px" as string]: `${Math.round(2 + 14 * i)}px`,
+      ["--ve-deg" as string]: `${(0.5 + 4 * i).toFixed(2)}deg`,
+      ["--ve-bright" as string]: 1 + 1.2 * i,
+    };
+  }, [settings.motion, settings.motionIntensity, settings.motionSpeed, isPlaying]);
+
+
   const addText = () => {
     const t: TextOverlay = {
       id: crypto.randomUUID(),
@@ -295,14 +343,16 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
           )}
         >
 
-          <video
-            ref={videoRef}
-            src={videoUrl}
-            className="w-full h-full object-contain"
-            style={{ filter: cssFilter, opacity: fadeOpacity }}
-            playsInline
-            onClick={togglePlay}
-          />
+          <div className="absolute inset-0 overflow-hidden" style={motionStyle}>
+            <video
+              ref={videoRef}
+              src={videoUrl}
+              className="w-full h-full object-contain"
+              style={{ filter: cssFilter, opacity: fadeOpacity }}
+              playsInline
+              onClick={togglePlay}
+            />
+          </div>
 
           {activeTexts.map((t) => (
             <div
@@ -645,6 +695,44 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                     onValueChange={(v) => set(key, v[0] ?? 100)} />
                 </div>
               ))}
+
+              {/* EFEITOS DINÂMICOS */}
+              <div className="space-y-3 pt-2 border-t border-[#D4AF37]/15">
+                <Label className="text-[#FAFAFA] text-sm">Efeito dinâmico</Label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {(Object.keys(MOTIONS) as MotionKey[]).map((k) => (
+                    <Button key={k} size="sm" variant="outline"
+                      className={cn("h-8 text-[11px] px-1 truncate", (settings.motion ?? "none") === k
+                        ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
+                        : "border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10")}
+                      onClick={() => set("motion", k)}>{MOTIONS[k].label}</Button>
+                  ))}
+                </div>
+
+                {(settings.motion ?? "none") !== "none" && (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-[#FAFAFA] text-sm">Intensidade</Label>
+                        <span className="text-[10px] text-[#D4AF37]/60">{settings.motionIntensity ?? 50}%</span>
+                      </div>
+                      <Slider min={10} max={100} step={5} value={[settings.motionIntensity ?? 50]}
+                        onValueChange={(v) => set("motionIntensity", v[0] ?? 50)} />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-[#FAFAFA] text-sm">Velocidade do efeito</Label>
+                        <span className="text-[10px] text-[#D4AF37]/60">{(settings.motionSpeed ?? 1).toFixed(1)}x</span>
+                      </div>
+                      <Slider min={0.5} max={3} step={0.1} value={[settings.motionSpeed ?? 1]}
+                        onValueChange={(v) => set("motionSpeed", v[0] ?? 1)} />
+                    </div>
+                    <p className="text-[10px] text-[#D4AF37]/50">
+                      Dê play no preview para ver o efeito em movimento.
+                    </p>
+                  </>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
