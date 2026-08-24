@@ -102,6 +102,9 @@ const DEFAULTS: EditorSettings = {
   saturation: 100,
   fadeIn: false,
   fadeOut: false,
+  motion: "none",
+  motionIntensity: 50,
+  motionSpeed: 1,
   texts: [],
 };
 
