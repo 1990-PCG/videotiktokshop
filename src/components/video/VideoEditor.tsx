@@ -263,6 +263,30 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
     return 1;
   }, [currentTime, settings.fadeIn, settings.fadeOut, settings.startTime, settings.endTime, duration]);
 
+  const motionStyle = useMemo<React.CSSProperties>(() => {
+    const key = (settings.motion ?? "none") as MotionKey;
+    const m = MOTIONS[key];
+    if (!m || !m.anim) return {};
+    const i = (settings.motionIntensity ?? 50) / 100; // 0..1
+    const speed = settings.motionSpeed ?? 1;
+    const dur = m.loop ? Math.max(0.25, 1.6 / speed) : Math.max(1, 6 / speed);
+    return {
+      animationName: m.anim,
+      animationDuration: `${dur}s`,
+      animationTimingFunction: key === "shake" || key === "glitch" ? "steps(4, end)" : "ease-in-out",
+      animationIterationCount: m.loop ? "infinite" : 1,
+      animationFillMode: "both",
+      animationPlayState: isPlaying ? "running" : "paused",
+      transformOrigin: "center",
+      willChange: "transform, filter",
+      ["--ve-amt" as string]: 1 + 0.35 * i,
+      ["--ve-px" as string]: `${Math.round(2 + 14 * i)}px`,
+      ["--ve-deg" as string]: `${(0.5 + 4 * i).toFixed(2)}deg`,
+      ["--ve-bright" as string]: 1 + 1.2 * i,
+    };
+  }, [settings.motion, settings.motionIntensity, settings.motionSpeed, isPlaying]);
+
+
   const addText = () => {
     const t: TextOverlay = {
       id: crypto.randomUUID(),
