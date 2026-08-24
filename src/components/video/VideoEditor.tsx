@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Scissors, Volume2, Type, Play, Pause, Save, Loader2, RotateCcw,
   Gauge, Sparkles, Plus, Trash2, Crop, SkipBack, SkipForward, ZoomIn, ZoomOut,
+  ArrowUp, ArrowDown, Eye, EyeOff, Diamond,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
