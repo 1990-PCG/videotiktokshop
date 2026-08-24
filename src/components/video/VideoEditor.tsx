@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Scissors, Volume2, Type, Play, Pause, Save, Loader2, RotateCcw,
   Gauge, Sparkles, Plus, Trash2, Crop, SkipBack, SkipForward, ZoomIn, ZoomOut,
+  ArrowUp, ArrowDown, Eye, EyeOff, Diamond,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,12 +48,55 @@ export interface EditorSettings {
   saturation?: number;
   fadeIn?: boolean;
   fadeOut?: boolean;
-  /** efeito dinâmico (movimento) */
+  /** efeito dinâmico (legado — migrado para `effects`) */
   motion?: MotionKey;
   motionIntensity?: number;
   motionSpeed?: number;
+  /** pilha de efeitos dinâmicos (ordem de aplicação: do primeiro ao último) */
+  effects?: EffectLayer[];
+  /** efeitos de áudio */
+  audioFx?: AudioFx;
   texts?: TextOverlay[];
 }
+
+export interface EffectKeyframe {
+  id: string;
+  time: number;      // segundos
+  intensity: number; // 0-100
+}
+
+export interface EffectLayer {
+  id: string;
+  motion: MotionKey;
+  intensity: number;
+  speed: number;
+  start: number;
+  end: number;
+  enabled: boolean;
+  keyframes: EffectKeyframe[];
+}
+
+export interface AudioFx {
+  bass: number;     // -15..15 dB
+  treble: number;   // -15..15 dB
+  echo: number;     // 0..100 (%)
+  echoTime: number; // 0.05..1 s
+  pitch: number;    // 0.5..2 (via playbackRate do áudio = velocidade do vídeo, aqui é detune simulado)
+  preset?: AudioPresetKey;
+}
+
+type AudioPresetKey = "none" | "podcast" | "radio" | "cinema" | "grave" | "telefone" | "arena";
+
+const AUDIO_PRESETS: Record<AudioPresetKey, { label: string; fx: Omit<AudioFx, "preset"> }> = {
+  none:     { label: "Original",  fx: { bass: 0, treble: 0, echo: 0, echoTime: 0.25, pitch: 1 } },
+  podcast:  { label: "Podcast",   fx: { bass: 3, treble: 4, echo: 0, echoTime: 0.2, pitch: 1 } },
+  radio:    { label: "Rádio",     fx: { bass: 6, treble: 6, echo: 8, echoTime: 0.15, pitch: 1 } },
+  cinema:   { label: "Cinema",    fx: { bass: 8, treble: 2, echo: 18, echoTime: 0.35, pitch: 1 } },
+  grave:    { label: "Grave",     fx: { bass: 12, treble: -4, echo: 0, echoTime: 0.25, pitch: 1 } },
+  telefone: { label: "Telefone",  fx: { bass: -12, treble: -6, echo: 0, echoTime: 0.2, pitch: 1 } },
+  arena:    { label: "Arena",     fx: { bass: 4, treble: 1, echo: 45, echoTime: 0.5, pitch: 1 } },
+};
+
 
 type FilterKey = "none" | "vivid" | "cinema" | "bw" | "vintage" | "cool" | "warm";
 
@@ -105,15 +149,72 @@ const DEFAULTS: EditorSettings = {
   motion: "none",
   motionIntensity: 50,
   motionSpeed: 1,
+  effects: [],
+  audioFx: { bass: 0, treble: 0, echo: 0, echoTime: 0.25, pitch: 1, preset: "none" },
   texts: [],
 };
+
+const uid = () => (globalThis.crypto?.randomUUID?.() ?? `id-${Math.random().toString(36).slice(2)}`);
+
+export function makeLayer(motion: MotionKey, patch: Partial<EffectLayer> = {}): EffectLayer {
+  return {
+    id: uid(),
+    motion,
+    intensity: 50,
+    speed: 1,
+    start: 0,
+    end: 0, // 0 = até o fim
+    enabled: true,
+    keyframes: [],
+    ...patch,
+  };
+}
+
+/** Presets prontos: combinam camadas de efeito + look de cor */
+const EFFECT_PRESETS: {
+  key: string;
+  label: string;
+  filter?: FilterKey;
+  build: () => EffectLayer[];
+}[] = [
+  { key: "viral", label: "Viral TikTok", filter: "vivid", build: () => [
+      makeLayer("zoomIn", { intensity: 40, speed: 1 }),
+      makeLayer("pulse", { intensity: 35, speed: 1.6 }),
+    ] },
+  { key: "hook", label: "Hook forte", filter: "vivid", build: () => [
+      makeLayer("slideIn", { intensity: 70, speed: 1.4 }),
+      makeLayer("flash", { intensity: 45, speed: 2 }),
+    ] },
+  { key: "cinema", label: "Cinematográfico", filter: "cinema", build: () => [
+      makeLayer("kenburns", { intensity: 30, speed: 0.6 }),
+    ] },
+  { key: "energia", label: "Energia", filter: "warm", build: () => [
+      makeLayer("shake", { intensity: 35, speed: 2 }),
+      makeLayer("pulse", { intensity: 45, speed: 2.2 }),
+    ] },
+  { key: "retro", label: "Retrô glitch", filter: "vintage", build: () => [
+      makeLayer("glitch", { intensity: 50, speed: 1.5 }),
+      makeLayer("swing", { intensity: 25, speed: 0.8 }),
+    ] },
+  { key: "suave", label: "Suave", filter: "cool", build: () => [
+      makeLayer("zoomOut", { intensity: 20, speed: 0.5 }),
+    ] },
+];
 
 function migrate(s?: EditorSettings): EditorSettings {
   if (!s) return { ...DEFAULTS };
   const merged: EditorSettings = { ...DEFAULTS, ...s };
+  merged.audioFx = { ...DEFAULTS.audioFx!, ...(s.audioFx ?? {}) };
+  if ((!merged.effects || merged.effects.length === 0) && s.motion && s.motion !== "none") {
+    merged.effects = [makeLayer(s.motion, {
+      intensity: s.motionIntensity ?? 50,
+      speed: s.motionSpeed ?? 1,
+    })];
+  }
+  merged.effects = (merged.effects ?? []).map((l) => ({ ...makeLayer(l.motion), ...l, keyframes: l.keyframes ?? [] }));
   if ((!merged.texts || merged.texts.length === 0) && s.subtitle) {
     merged.texts = [{
-      id: crypto.randomUUID(),
+      id: uid(),
       text: s.subtitle,
       start: s.startTime ?? 0,
       end: s.endTime ?? 0,
@@ -125,6 +226,24 @@ function migrate(s?: EditorSettings): EditorSettings {
   }
   return merged;
 }
+
+/** Intensidade da camada no instante `t`, interpolando keyframes. */
+export function intensityAt(layer: EffectLayer, t: number): number {
+  const kfs = [...(layer.keyframes ?? [])].sort((a, b) => a.time - b.time);
+  if (kfs.length === 0) return layer.intensity;
+  if (t <= kfs[0]!.time) return kfs[0]!.intensity;
+  if (t >= kfs[kfs.length - 1]!.time) return kfs[kfs.length - 1]!.intensity;
+  for (let i = 0; i < kfs.length - 1; i++) {
+    const a = kfs[i]!, b = kfs[i + 1]!;
+    if (t >= a.time && t <= b.time) {
+      const span = b.time - a.time || 1;
+      const r = (t - a.time) / span;
+      return a.intensity + (b.intensity - a.intensity) * r;
+    }
+  }
+  return layer.intensity;
+}
+
 
 const fmt = (t: number) => {
   if (!isFinite(t)) return "0:00.0";
@@ -192,12 +311,22 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
     const v = videoRef.current;
     if (!v) return;
     if (isPlaying) { v.pause(); setIsPlaying(false); return; }
+    const g = ensureAudioGraph();
+    if (g) {
+      void g.ctx.resume();
+      const fx = settings.audioFx ?? DEFAULTS.audioFx!;
+      g.bass.gain.value = fx.bass ?? 0;
+      g.treble.gain.value = fx.treble ?? 0;
+      g.delay.delayTime.value = Math.min(1.4, Math.max(0.05, fx.echoTime ?? 0.25));
+      g.wet.gain.value = Math.max(0, Math.min(1, (fx.echo ?? 0) / 100));
+    }
     if (v.currentTime < settings.startTime || v.currentTime >= (settings.endTime || duration)) {
       v.currentTime = settings.startTime;
     }
     void v.play();
     setIsPlaying(true);
   };
+
 
   const seek = (t: number) => {
     const v = videoRef.current;
@@ -263,28 +392,159 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
     return 1;
   }, [currentTime, settings.fadeIn, settings.fadeOut, settings.startTime, settings.endTime, duration]);
 
-  const motionStyle = useMemo<React.CSSProperties>(() => {
-    const key = (settings.motion ?? "none") as MotionKey;
-    const m = MOTIONS[key];
-    if (!m || !m.anim) return {};
-    const i = (settings.motionIntensity ?? 50) / 100; // 0..1
-    const speed = settings.motionSpeed ?? 1;
-    const dur = m.loop ? Math.max(0.25, 1.6 / speed) : Math.max(1, 6 / speed);
-    return {
-      animationName: m.anim,
-      animationDuration: `${dur}s`,
-      animationTimingFunction: key === "shake" || key === "glitch" ? "steps(4, end)" : "ease-in-out",
-      animationIterationCount: m.loop ? "infinite" : 1,
-      animationFillMode: "both",
-      animationPlayState: isPlaying ? "running" : "paused",
-      transformOrigin: "center",
-      willChange: "transform, filter",
-      ["--ve-amt" as string]: 1 + 0.35 * i,
-      ["--ve-px" as string]: `${Math.round(2 + 14 * i)}px`,
-      ["--ve-deg" as string]: `${(0.5 + 4 * i).toFixed(2)}deg`,
-      ["--ve-bright" as string]: 1 + 1.2 * i,
-    };
-  }, [settings.motion, settings.motionIntensity, settings.motionSpeed, isPlaying]);
+  const layers = settings.effects ?? [];
+
+  /** Estilos das camadas ativas, na ordem de aplicação (índice 0 = camada mais externa). */
+  const layerStyles = useMemo(() => {
+    return layers
+      .filter((l) => {
+        if (!l.enabled) return false;
+        if (!MOTIONS[l.motion]?.anim) return false;
+        const end = l.end || (settings.endTime || duration) || Infinity;
+        return currentTime >= (l.start ?? 0) && currentTime <= end;
+      })
+      .map((l) => {
+        const m = MOTIONS[l.motion];
+        const i = Math.max(0, Math.min(100, intensityAt(l, currentTime))) / 100;
+        const speed = l.speed || 1;
+        const dur = m.loop ? Math.max(0.25, 1.6 / speed) : Math.max(1, 6 / speed);
+        const style: React.CSSProperties = {
+          animationName: m.anim,
+          animationDuration: `${dur}s`,
+          animationTimingFunction: l.motion === "shake" || l.motion === "glitch" ? "steps(4, end)" : "ease-in-out",
+          animationIterationCount: m.loop ? "infinite" : 1,
+          animationFillMode: "both",
+          animationPlayState: isPlaying ? "running" : "paused",
+          transformOrigin: "center",
+          willChange: "transform, filter",
+          ["--ve-amt" as string]: 1 + 0.35 * i,
+          ["--ve-px" as string]: `${Math.round(2 + 14 * i)}px`,
+          ["--ve-deg" as string]: `${(0.5 + 4 * i).toFixed(2)}deg`,
+          ["--ve-bright" as string]: 1 + 1.2 * i,
+        };
+        return { id: l.id, style };
+      });
+  }, [layers, currentTime, isPlaying, duration, settings.endTime]);
+
+  // ---- camadas de efeito ----
+  const addLayer = (motion: MotionKey) =>
+    setSettings((s) => ({ ...s, effects: [...(s.effects ?? []), makeLayer(motion, { end: s.endTime || 0 })] }));
+
+  const updateLayer = (id: string, patch: Partial<EffectLayer>) =>
+    setSettings((s) => ({ ...s, effects: (s.effects ?? []).map((l) => (l.id === id ? { ...l, ...patch } : l)) }));
+
+  const removeLayer = (id: string) =>
+    setSettings((s) => ({ ...s, effects: (s.effects ?? []).filter((l) => l.id !== id) }));
+
+  const moveLayer = (id: string, dir: -1 | 1) =>
+    setSettings((s) => {
+      const arr = [...(s.effects ?? [])];
+      const i = arr.findIndex((l) => l.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= arr.length) return s;
+      [arr[i], arr[j]] = [arr[j]!, arr[i]!];
+      return { ...s, effects: arr };
+    });
+
+  const applyPreset = (key: string) => {
+    const p = EFFECT_PRESETS.find((x) => x.key === key);
+    if (!p) return;
+    setSettings((s) => ({
+      ...s,
+      filter: (p.filter ?? s.filter ?? "none") as FilterKey,
+      effects: p.build().map((l) => ({ ...l, end: s.endTime || 0 })),
+    }));
+
+    toast.success(`Preset "${p.label}" aplicado`);
+  };
+
+  // ---- keyframes ----
+  const addKeyframe = (layerId: string) =>
+    setSettings((s) => ({
+      ...s,
+      effects: (s.effects ?? []).map((l) =>
+        l.id === layerId
+          ? {
+              ...l,
+              keyframes: [...(l.keyframes ?? []), { id: uid(), time: Math.round(currentTime * 10) / 10, intensity: l.intensity }]
+                .sort((a, b) => a.time - b.time),
+            }
+          : l
+      ),
+    }));
+
+  const updateKeyframe = (layerId: string, kfId: string, patch: Partial<EffectKeyframe>) =>
+    setSettings((s) => ({
+      ...s,
+      effects: (s.effects ?? []).map((l) =>
+        l.id === layerId
+          ? { ...l, keyframes: (l.keyframes ?? []).map((k) => (k.id === kfId ? { ...k, ...patch } : k)).sort((a, b) => a.time - b.time) }
+          : l
+      ),
+    }));
+
+  const removeKeyframe = (layerId: string, kfId: string) =>
+    setSettings((s) => ({
+      ...s,
+      effects: (s.effects ?? []).map((l) =>
+        l.id === layerId ? { ...l, keyframes: (l.keyframes ?? []).filter((k) => k.id !== kfId) } : l
+      ),
+    }));
+
+  // ---- áudio (Web Audio) ----
+  const audioRef = useRef<{
+    ctx: AudioContext;
+    bass: BiquadFilterNode;
+    treble: BiquadFilterNode;
+    delay: DelayNode;
+    feedback: GainNode;
+    wet: GainNode;
+  } | null>(null);
+
+  const ensureAudioGraph = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || audioRef.current) return audioRef.current;
+    try {
+      const Ctx = window.AudioContext ?? (window as any).webkitAudioContext;
+      if (!Ctx) return null;
+      const ctx: AudioContext = new Ctx();
+      const src = ctx.createMediaElementSource(v);
+      const bass = ctx.createBiquadFilter(); bass.type = "lowshelf"; bass.frequency.value = 200;
+      const treble = ctx.createBiquadFilter(); treble.type = "highshelf"; treble.frequency.value = 3000;
+      const delay = ctx.createDelay(1.5);
+      const feedback = ctx.createGain(); feedback.gain.value = 0.35;
+      const wet = ctx.createGain(); wet.gain.value = 0;
+      src.connect(bass); bass.connect(treble);
+      treble.connect(ctx.destination);
+      treble.connect(delay); delay.connect(feedback); feedback.connect(delay);
+      delay.connect(wet); wet.connect(ctx.destination);
+      audioRef.current = { ctx, bass, treble, delay, feedback, wet };
+      return audioRef.current;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    const g = audioRef.current;
+    const fx = settings.audioFx;
+    if (!g || !fx) return;
+    g.bass.gain.value = fx.bass ?? 0;
+    g.treble.gain.value = fx.treble ?? 0;
+    g.delay.delayTime.value = Math.min(1.4, Math.max(0.05, fx.echoTime ?? 0.25));
+    g.wet.gain.value = Math.max(0, Math.min(1, (fx.echo ?? 0) / 100));
+  }, [settings.audioFx]);
+
+  const setAudioFx = (patch: Partial<AudioFx>) => {
+    ensureAudioGraph();
+    setSettings((s) => ({ ...s, audioFx: { ...(s.audioFx ?? DEFAULTS.audioFx!), ...patch } }));
+  };
+
+  const applyAudioPreset = (key: AudioPresetKey) => {
+    ensureAudioGraph();
+    setSettings((s) => ({ ...s, audioFx: { ...AUDIO_PRESETS[key].fx, preset: key } }));
+  };
+
 
 
   const addText = () => {
@@ -343,16 +603,23 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
           )}
         >
 
-          <div className="absolute inset-0 overflow-hidden" style={motionStyle}>
-            <video
-              ref={videoRef}
-              src={videoUrl}
-              className="w-full h-full object-contain"
-              style={{ filter: cssFilter, opacity: fadeOpacity }}
-              playsInline
-              onClick={togglePlay}
-            />
+          <div className="absolute inset-0 overflow-hidden" style={layerStyles[0]?.style ?? {}}>
+            <div className="absolute inset-0 overflow-hidden" style={layerStyles[1]?.style ?? {}}>
+              <div className="absolute inset-0 overflow-hidden" style={layerStyles[2]?.style ?? {}}>
+                <div className="absolute inset-0 overflow-hidden" style={layerStyles[3]?.style ?? {}}>
+                  <video
+                    ref={videoRef}
+                    src={videoUrl}
+                    className="w-full h-full object-contain"
+                    style={{ filter: cssFilter, opacity: fadeOpacity }}
+                    playsInline
+                    onClick={togglePlay}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
+
 
           {activeTexts.map((t) => (
             <div
@@ -650,7 +917,7 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                 <Slider min={0} max={1} step={0.01} value={[settings.volume ?? 1]}
                   onValueChange={(v) => set("volume", v[0] ?? 1)} />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline"
                   className={cn("h-8 text-[11px]", settings.fadeIn
                     ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
@@ -664,7 +931,62 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                 <Button size="sm" variant="outline" className="h-8 text-[11px] border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
                   onClick={() => set("volume", 0)}>Mudo</Button>
               </div>
+
+              {/* EFEITOS DE ÁUDIO */}
+              <div className="space-y-3 pt-3 border-t border-[#D4AF37]/15">
+                <Label className="text-[#FAFAFA] text-sm">Efeitos de áudio</Label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {(Object.keys(AUDIO_PRESETS) as AudioPresetKey[]).map((k) => (
+                    <Button key={k} size="sm" variant="outline"
+                      className={cn("h-8 text-[11px] px-1 truncate", (settings.audioFx?.preset ?? "none") === k
+                        ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
+                        : "border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10")}
+                      onClick={() => applyAudioPreset(k)}>{AUDIO_PRESETS[k].label}</Button>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Graves</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{settings.audioFx?.bass ?? 0} dB</span>
+                  </div>
+                  <Slider min={-15} max={15} step={1} value={[settings.audioFx?.bass ?? 0]}
+                    onValueChange={(v) => setAudioFx({ bass: v[0] ?? 0, preset: "none" })} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Agudos</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{settings.audioFx?.treble ?? 0} dB</span>
+                  </div>
+                  <Slider min={-15} max={15} step={1} value={[settings.audioFx?.treble ?? 0]}
+                    onValueChange={(v) => setAudioFx({ treble: v[0] ?? 0, preset: "none" })} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Eco / reverb</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{settings.audioFx?.echo ?? 0}%</span>
+                  </div>
+                  <Slider min={0} max={100} step={5} value={[settings.audioFx?.echo ?? 0]}
+                    onValueChange={(v) => setAudioFx({ echo: v[0] ?? 0, preset: "none" })} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Tempo do eco</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{(settings.audioFx?.echoTime ?? 0.25).toFixed(2)}s</span>
+                  </div>
+                  <Slider min={0.05} max={1} step={0.05} value={[settings.audioFx?.echoTime ?? 0.25]}
+                    onValueChange={(v) => setAudioFx({ echoTime: v[0] ?? 0.25, preset: "none" })} />
+                </div>
+
+                <p className="text-[10px] text-[#D4AF37]/50">
+                  Dê play para ouvir os ajustes de áudio no preview.
+                </p>
+              </div>
             </CardContent>
+
           </Card>
         </TabsContent>
 
@@ -696,43 +1018,158 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                 </div>
               ))}
 
-              {/* EFEITOS DINÂMICOS */}
+              {/* PRESETS PRONTOS */}
+              <div className="space-y-2 pt-2 border-t border-[#D4AF37]/15">
+                <Label className="text-[#FAFAFA] text-sm">Presets prontos</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {EFFECT_PRESETS.map((p) => (
+                    <Button key={p.key} size="sm" variant="outline"
+                      className="h-8 text-[11px] px-1 truncate border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                      onClick={() => applyPreset(p.key)}>{p.label}</Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* PILHA DE EFEITOS */}
               <div className="space-y-3 pt-2 border-t border-[#D4AF37]/15">
-                <Label className="text-[#FAFAFA] text-sm">Efeito dinâmico</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-[#FAFAFA] text-sm">Camadas de efeito</Label>
+                  {layers.length > 0 && (
+                    <Button size="sm" variant="ghost" className="h-7 text-[11px] text-[#D4AF37]/70"
+                      onClick={() => set("effects", [])}>Limpar</Button>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {(Object.keys(MOTIONS) as MotionKey[]).map((k) => (
+                  {(Object.keys(MOTIONS) as MotionKey[]).filter((k) => k !== "none").map((k) => (
                     <Button key={k} size="sm" variant="outline"
-                      className={cn("h-8 text-[11px] px-1 truncate", (settings.motion ?? "none") === k
-                        ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
-                        : "border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10")}
-                      onClick={() => set("motion", k)}>{MOTIONS[k].label}</Button>
+                      className="h-8 text-[11px] px-1 truncate border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                      onClick={() => addLayer(k)}>
+                      <Plus className="h-3 w-3 mr-0.5 shrink-0 hidden sm:inline" />{MOTIONS[k].label}
+                    </Button>
                   ))}
                 </div>
 
-                {(settings.motion ?? "none") !== "none" && (
-                  <>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-[#FAFAFA] text-sm">Intensidade</Label>
-                        <span className="text-[10px] text-[#D4AF37]/60">{settings.motionIntensity ?? 50}%</span>
-                      </div>
-                      <Slider min={10} max={100} step={5} value={[settings.motionIntensity ?? 50]}
-                        onValueChange={(v) => set("motionIntensity", v[0] ?? 50)} />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-[#FAFAFA] text-sm">Velocidade do efeito</Label>
-                        <span className="text-[10px] text-[#D4AF37]/60">{(settings.motionSpeed ?? 1).toFixed(1)}x</span>
-                      </div>
-                      <Slider min={0.5} max={3} step={0.1} value={[settings.motionSpeed ?? 1]}
-                        onValueChange={(v) => set("motionSpeed", v[0] ?? 1)} />
-                    </div>
-                    <p className="text-[10px] text-[#D4AF37]/50">
-                      Dê play no preview para ver o efeito em movimento.
-                    </p>
-                  </>
+                {layers.length === 0 && (
+                  <p className="text-[10px] text-[#D4AF37]/50">
+                    Nenhum efeito na pilha. Escolha um preset ou adicione efeitos acima — eles são aplicados de cima para baixo.
+                  </p>
                 )}
+
+                <div className="space-y-2">
+                  {layers.map((l, idx) => (
+                    <div key={l.id} className={cn("rounded-lg border p-3 space-y-3",
+                      l.enabled ? "border-[#D4AF37]/40 bg-[#D4AF37]/5" : "border-[#262626] opacity-60")}>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-mono text-[#D4AF37]/60 w-5 shrink-0">{idx + 1}.</span>
+                        <span className="text-xs text-[#FAFAFA] flex-1 truncate">{MOTIONS[l.motion].label}</span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-[#D4AF37]" disabled={idx === 0}
+                          onClick={() => moveLayer(l.id, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-[#D4AF37]" disabled={idx === layers.length - 1}
+                          onClick={() => moveLayer(l.id, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-[#D4AF37]"
+                          onClick={() => updateLayer(l.id, { enabled: !l.enabled })}>
+                          {l.enabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:bg-red-500/10"
+                          onClick={() => removeLayer(l.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[9px] uppercase tracking-widest text-[#D4AF37]/60">Início (s)</Label>
+                          <Input type="number" step="0.1" value={l.start}
+                            onChange={(e) => updateLayer(l.id, { start: Number(e.target.value) })}
+                            className="bg-black border-[#262626] text-[#FAFAFA] h-8 text-xs" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[9px] uppercase tracking-widest text-[#D4AF37]/60">Fim (s)</Label>
+                          <Input type="number" step="0.1" value={l.end}
+                            onChange={(e) => updateLayer(l.id, { end: Number(e.target.value) })}
+                            className="bg-black border-[#262626] text-[#FAFAFA] h-8 text-xs" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <Label className="text-[10px] text-[#FAFAFA]">Intensidade base</Label>
+                          <span className="text-[10px] text-[#D4AF37]/60">{l.intensity}%</span>
+                        </div>
+                        <Slider min={5} max={100} step={5} value={[l.intensity]}
+                          onValueChange={(v) => updateLayer(l.id, { intensity: v[0] ?? 50 })} />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <Label className="text-[10px] text-[#FAFAFA]">Velocidade</Label>
+                          <span className="text-[10px] text-[#D4AF37]/60">{l.speed.toFixed(1)}x</span>
+                        </div>
+                        <Slider min={0.3} max={3} step={0.1} value={[l.speed]}
+                          onValueChange={(v) => updateLayer(l.id, { speed: v[0] ?? 1 })} />
+                      </div>
+
+                      {/* KEYFRAMES */}
+                      <div className="space-y-2 pt-2 border-t border-[#262626]">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] text-[#FAFAFA] flex items-center gap-1">
+                            <Diamond className="h-3 w-3 text-[#D4AF37]" /> Keyframes
+                            {(l.keyframes ?? []).length > 0 && (
+                              <span className="text-[#D4AF37]/60">
+                                — agora: {Math.round(intensityAt(l, currentTime))}%
+                              </span>
+                            )}
+                          </Label>
+                          <Button size="sm" variant="outline"
+                            className="h-6 text-[10px] border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                            onClick={() => addKeyframe(l.id)}>
+                            <Plus className="h-3 w-3 mr-0.5" /> {fmt(currentTime)}
+                          </Button>
+                        </div>
+
+                        {(l.keyframes ?? []).length === 0 ? (
+                          <p className="text-[10px] text-[#D4AF37]/40">
+                            Sem keyframes: a intensidade base vale para toda a camada.
+                          </p>
+                        ) : (
+                          <>
+                            {/* trilha visual */}
+                            <div className="relative h-6 rounded bg-[#111] border border-[#262626]">
+                              {(l.keyframes ?? []).map((k) => (
+                                <button key={k.id} title={`${fmt(k.time)} • ${k.intensity}%`}
+                                  onClick={() => seek(k.time)}
+                                  className="absolute top-1/2 -translate-y-1/2 -ml-1.5 h-3 w-3 rotate-45 bg-[#D4AF37] rounded-[2px]"
+                                  style={{ left: `${pct(k.time)}%` }} />
+                              ))}
+                              <div className="absolute top-0 bottom-0 w-[2px] bg-white/70 pointer-events-none"
+                                style={{ left: `${pct(currentTime)}%` }} />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {(l.keyframes ?? []).map((k) => (
+                                <div key={k.id} className="flex items-center gap-2">
+                                  <Input type="number" step="0.1" value={k.time}
+                                    onChange={(e) => updateKeyframe(l.id, k.id, { time: Number(e.target.value) })}
+                                    className="bg-black border-[#262626] text-[#FAFAFA] h-7 text-[11px] w-20" />
+                                  <Slider className="flex-1" min={0} max={100} step={5} value={[k.intensity]}
+                                    onValueChange={(v) => updateKeyframe(l.id, k.id, { intensity: v[0] ?? 50 })} />
+                                  <span className="text-[10px] text-[#D4AF37]/60 w-9 text-right">{k.intensity}%</span>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:bg-red-500/10"
+                                    onClick={() => removeKeyframe(l.id, k.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[10px] text-[#D4AF37]/50">
+                  Dê play no preview para ver os efeitos em movimento. Até 4 camadas são combinadas no preview.
+                </p>
               </div>
+
             </CardContent>
           </Card>
         </TabsContent>
