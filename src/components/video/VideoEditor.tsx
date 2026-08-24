@@ -446,16 +446,16 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
       <Tabs defaultValue="cortar">
         <TabsList className="bg-[#0A0A0A] border border-[#D4AF37]/20 w-full grid grid-cols-4 h-auto p-1">
           <TabsTrigger value="cortar" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
-            <Scissors className="h-3.5 w-3.5 mr-1 shrink-0 hidden xs:inline sm:inline" /> <span className="truncate">{ui("editor.tab.cortar")}</span>
+            <Scissors className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.cortar")}</span>
           </TabsTrigger>
           <TabsTrigger value="texto" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
-            <Type className="h-3.5 w-3.5 mr-1 shrink-0 hidden xs:inline sm:inline" /> <span className="truncate">{ui("editor.tab.texto")}</span>
+            <Type className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.texto")}</span>
           </TabsTrigger>
           <TabsTrigger value="audio" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
-            <Volume2 className="h-3.5 w-3.5 mr-1 shrink-0 hidden xs:inline sm:inline" /> <span className="truncate">{ui("editor.tab.audio")}</span>
+            <Volume2 className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.audio")}</span>
           </TabsTrigger>
           <TabsTrigger value="efeitos" className="data-[state=active]:bg-[#D4AF37] data-[state=active]:text-black text-[10px] sm:text-xs px-1 py-1.5 min-w-0">
-            <Sparkles className="h-3.5 w-3.5 mr-1 shrink-0 hidden xs:inline sm:inline" /> <span className="truncate">{ui("editor.tab.efeitos")}</span>
+            <Sparkles className="h-3.5 w-3.5 mr-1 shrink-0 hidden sm:inline" /> <span className="truncate">{ui("editor.tab.efeitos")}</span>
           </TabsTrigger>
         </TabsList>
 
