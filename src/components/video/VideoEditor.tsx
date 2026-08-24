@@ -440,9 +440,10 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
     if (!p) return;
     setSettings((s) => ({
       ...s,
-      filter: p.filter ?? s.filter,
+      filter: (p.filter ?? s.filter ?? "none") as FilterKey,
       effects: p.build().map((l) => ({ ...l, end: s.endTime || 0 })),
     }));
+
     toast.success(`Preset "${p.label}" aplicado`);
   };
 
