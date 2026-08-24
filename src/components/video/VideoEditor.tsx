@@ -952,43 +952,158 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                 </div>
               ))}
 
-              {/* EFEITOS DINÂMICOS */}
+              {/* PRESETS PRONTOS */}
+              <div className="space-y-2 pt-2 border-t border-[#D4AF37]/15">
+                <Label className="text-[#FAFAFA] text-sm">Presets prontos</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {EFFECT_PRESETS.map((p) => (
+                    <Button key={p.key} size="sm" variant="outline"
+                      className="h-8 text-[11px] px-1 truncate border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                      onClick={() => applyPreset(p.key)}>{p.label}</Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* PILHA DE EFEITOS */}
               <div className="space-y-3 pt-2 border-t border-[#D4AF37]/15">
-                <Label className="text-[#FAFAFA] text-sm">Efeito dinâmico</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-[#FAFAFA] text-sm">Camadas de efeito</Label>
+                  {layers.length > 0 && (
+                    <Button size="sm" variant="ghost" className="h-7 text-[11px] text-[#D4AF37]/70"
+                      onClick={() => set("effects", [])}>Limpar</Button>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {(Object.keys(MOTIONS) as MotionKey[]).map((k) => (
+                  {(Object.keys(MOTIONS) as MotionKey[]).filter((k) => k !== "none").map((k) => (
                     <Button key={k} size="sm" variant="outline"
-                      className={cn("h-8 text-[11px] px-1 truncate", (settings.motion ?? "none") === k
-                        ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
-                        : "border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10")}
-                      onClick={() => set("motion", k)}>{MOTIONS[k].label}</Button>
+                      className="h-8 text-[11px] px-1 truncate border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                      onClick={() => addLayer(k)}>
+                      <Plus className="h-3 w-3 mr-0.5 shrink-0 hidden sm:inline" />{MOTIONS[k].label}
+                    </Button>
                   ))}
                 </div>
 
-                {(settings.motion ?? "none") !== "none" && (
-                  <>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-[#FAFAFA] text-sm">Intensidade</Label>
-                        <span className="text-[10px] text-[#D4AF37]/60">{settings.motionIntensity ?? 50}%</span>
-                      </div>
-                      <Slider min={10} max={100} step={5} value={[settings.motionIntensity ?? 50]}
-                        onValueChange={(v) => set("motionIntensity", v[0] ?? 50)} />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <Label className="text-[#FAFAFA] text-sm">Velocidade do efeito</Label>
-                        <span className="text-[10px] text-[#D4AF37]/60">{(settings.motionSpeed ?? 1).toFixed(1)}x</span>
-                      </div>
-                      <Slider min={0.5} max={3} step={0.1} value={[settings.motionSpeed ?? 1]}
-                        onValueChange={(v) => set("motionSpeed", v[0] ?? 1)} />
-                    </div>
-                    <p className="text-[10px] text-[#D4AF37]/50">
-                      Dê play no preview para ver o efeito em movimento.
-                    </p>
-                  </>
+                {layers.length === 0 && (
+                  <p className="text-[10px] text-[#D4AF37]/50">
+                    Nenhum efeito na pilha. Escolha um preset ou adicione efeitos acima — eles são aplicados de cima para baixo.
+                  </p>
                 )}
+
+                <div className="space-y-2">
+                  {layers.map((l, idx) => (
+                    <div key={l.id} className={cn("rounded-lg border p-3 space-y-3",
+                      l.enabled ? "border-[#D4AF37]/40 bg-[#D4AF37]/5" : "border-[#262626] opacity-60")}>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-mono text-[#D4AF37]/60 w-5 shrink-0">{idx + 1}.</span>
+                        <span className="text-xs text-[#FAFAFA] flex-1 truncate">{MOTIONS[l.motion].label}</span>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-[#D4AF37]" disabled={idx === 0}
+                          onClick={() => moveLayer(l.id, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-[#D4AF37]" disabled={idx === layers.length - 1}
+                          onClick={() => moveLayer(l.id, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-[#D4AF37]"
+                          onClick={() => updateLayer(l.id, { enabled: !l.enabled })}>
+                          {l.enabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:bg-red-500/10"
+                          onClick={() => removeLayer(l.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[9px] uppercase tracking-widest text-[#D4AF37]/60">Início (s)</Label>
+                          <Input type="number" step="0.1" value={l.start}
+                            onChange={(e) => updateLayer(l.id, { start: Number(e.target.value) })}
+                            className="bg-black border-[#262626] text-[#FAFAFA] h-8 text-xs" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[9px] uppercase tracking-widest text-[#D4AF37]/60">Fim (s)</Label>
+                          <Input type="number" step="0.1" value={l.end}
+                            onChange={(e) => updateLayer(l.id, { end: Number(e.target.value) })}
+                            className="bg-black border-[#262626] text-[#FAFAFA] h-8 text-xs" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <Label className="text-[10px] text-[#FAFAFA]">Intensidade base</Label>
+                          <span className="text-[10px] text-[#D4AF37]/60">{l.intensity}%</span>
+                        </div>
+                        <Slider min={5} max={100} step={5} value={[l.intensity]}
+                          onValueChange={(v) => updateLayer(l.id, { intensity: v[0] ?? 50 })} />
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <Label className="text-[10px] text-[#FAFAFA]">Velocidade</Label>
+                          <span className="text-[10px] text-[#D4AF37]/60">{l.speed.toFixed(1)}x</span>
+                        </div>
+                        <Slider min={0.3} max={3} step={0.1} value={[l.speed]}
+                          onValueChange={(v) => updateLayer(l.id, { speed: v[0] ?? 1 })} />
+                      </div>
+
+                      {/* KEYFRAMES */}
+                      <div className="space-y-2 pt-2 border-t border-[#262626]">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] text-[#FAFAFA] flex items-center gap-1">
+                            <Diamond className="h-3 w-3 text-[#D4AF37]" /> Keyframes
+                            {(l.keyframes ?? []).length > 0 && (
+                              <span className="text-[#D4AF37]/60">
+                                — agora: {Math.round(intensityAt(l, currentTime))}%
+                              </span>
+                            )}
+                          </Label>
+                          <Button size="sm" variant="outline"
+                            className="h-6 text-[10px] border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
+                            onClick={() => addKeyframe(l.id)}>
+                            <Plus className="h-3 w-3 mr-0.5" /> {fmt(currentTime)}
+                          </Button>
+                        </div>
+
+                        {(l.keyframes ?? []).length === 0 ? (
+                          <p className="text-[10px] text-[#D4AF37]/40">
+                            Sem keyframes: a intensidade base vale para toda a camada.
+                          </p>
+                        ) : (
+                          <>
+                            {/* trilha visual */}
+                            <div className="relative h-6 rounded bg-[#111] border border-[#262626]">
+                              {(l.keyframes ?? []).map((k) => (
+                                <button key={k.id} title={`${fmt(k.time)} • ${k.intensity}%`}
+                                  onClick={() => seek(k.time)}
+                                  className="absolute top-1/2 -translate-y-1/2 -ml-1.5 h-3 w-3 rotate-45 bg-[#D4AF37] rounded-[2px]"
+                                  style={{ left: `${pct(k.time)}%` }} />
+                              ))}
+                              <div className="absolute top-0 bottom-0 w-[2px] bg-white/70 pointer-events-none"
+                                style={{ left: `${pct(currentTime)}%` }} />
+                            </div>
+
+                            <div className="space-y-1.5">
+                              {(l.keyframes ?? []).map((k) => (
+                                <div key={k.id} className="flex items-center gap-2">
+                                  <Input type="number" step="0.1" value={k.time}
+                                    onChange={(e) => updateKeyframe(l.id, k.id, { time: Number(e.target.value) })}
+                                    className="bg-black border-[#262626] text-[#FAFAFA] h-7 text-[11px] w-20" />
+                                  <Slider className="flex-1" min={0} max={100} step={5} value={[k.intensity]}
+                                    onValueChange={(v) => updateKeyframe(l.id, k.id, { intensity: v[0] ?? 50 })} />
+                                  <span className="text-[10px] text-[#D4AF37]/60 w-9 text-right">{k.intensity}%</span>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:bg-red-500/10"
+                                    onClick={() => removeKeyframe(l.id, k.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[10px] text-[#D4AF37]/50">
+                  Dê play no preview para ver os efeitos em movimento. Até 4 camadas são combinadas no preview.
+                </p>
               </div>
+
             </CardContent>
           </Card>
         </TabsContent>
