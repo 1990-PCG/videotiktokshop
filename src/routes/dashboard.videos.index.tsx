@@ -71,6 +71,76 @@ function MyVideosView() {
     },
   });
 
+  const importFn = useServerFn(importExternalVideo);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("video/")) {
+      toast.error("Selecione um arquivo de vídeo.");
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sessão expirada. Faça login novamente.");
+
+      const extension = file.name.split(".").pop() || "mp4";
+      const fileName = `${user.id}/import-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("videos")
+        .upload(fileName, file, { contentType: file.type });
+      if (uploadError) throw uploadError;
+
+      const { data: signedData, error: urlError } = await supabase.storage
+        .from("videos")
+        .createSignedUrl(fileName, 60 * 60 * 24 * 365 * 10);
+      if (urlError || !signedData) throw urlError || new Error("Não foi possível gerar o link do vídeo.");
+
+      const titulo = file.name.replace(/\.[^.]+$/, "");
+      const result = await importFn({ data: { titulo, videoUrl: signedData.signedUrl } });
+
+      await queryClient.invalidateQueries({ queryKey: ["my-videos"] });
+      toast.success("Vídeo importado! Abrindo o editor...");
+      setEditingSettingsVideo({
+        id: result.scriptId,
+        roteiroRowId: result.roteiroRowId,
+        titulo,
+        video_url: signedData.signedUrl,
+        video_settings: null,
+      });
+    } catch (error: any) {
+      toast.error("Erro ao importar vídeo: " + (error?.message || "tente novamente"));
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const importButton = (
+    <>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleImportFile}
+      />
+      <Button
+        className="bg-[#D4AF37] hover:bg-[#B8962E] text-black font-medium"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isImporting}
+      >
+        {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+        {isImporting ? "Importando..." : "Importar Vídeo"}
+      </Button>
+    </>
+  );
+
   const handleEdit = (video: any) => {
     setEditingId(video.id);
     setEditValue(video.titulo || "");
