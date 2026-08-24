@@ -907,7 +907,7 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                 <Slider min={0} max={1} step={0.01} value={[settings.volume ?? 1]}
                   onValueChange={(v) => set("volume", v[0] ?? 1)} />
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button size="sm" variant="outline"
                   className={cn("h-8 text-[11px]", settings.fadeIn
                     ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
@@ -921,7 +921,62 @@ export function VideoEditor({ videoUrl, onSave, initialSettings }: VideoEditorPr
                 <Button size="sm" variant="outline" className="h-8 text-[11px] border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10"
                   onClick={() => set("volume", 0)}>Mudo</Button>
               </div>
+
+              {/* EFEITOS DE ÁUDIO */}
+              <div className="space-y-3 pt-3 border-t border-[#D4AF37]/15">
+                <Label className="text-[#FAFAFA] text-sm">Efeitos de áudio</Label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {(Object.keys(AUDIO_PRESETS) as AudioPresetKey[]).map((k) => (
+                    <Button key={k} size="sm" variant="outline"
+                      className={cn("h-8 text-[11px] px-1 truncate", (settings.audioFx?.preset ?? "none") === k
+                        ? "bg-[#D4AF37] text-black hover:bg-[#B8962E] border-transparent"
+                        : "border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#D4AF37]/10")}
+                      onClick={() => applyAudioPreset(k)}>{AUDIO_PRESETS[k].label}</Button>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Graves</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{settings.audioFx?.bass ?? 0} dB</span>
+                  </div>
+                  <Slider min={-15} max={15} step={1} value={[settings.audioFx?.bass ?? 0]}
+                    onValueChange={(v) => setAudioFx({ bass: v[0] ?? 0, preset: "none" })} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Agudos</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{settings.audioFx?.treble ?? 0} dB</span>
+                  </div>
+                  <Slider min={-15} max={15} step={1} value={[settings.audioFx?.treble ?? 0]}
+                    onValueChange={(v) => setAudioFx({ treble: v[0] ?? 0, preset: "none" })} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Eco / reverb</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{settings.audioFx?.echo ?? 0}%</span>
+                  </div>
+                  <Slider min={0} max={100} step={5} value={[settings.audioFx?.echo ?? 0]}
+                    onValueChange={(v) => setAudioFx({ echo: v[0] ?? 0, preset: "none" })} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <Label className="text-[10px] text-[#FAFAFA]">Tempo do eco</Label>
+                    <span className="text-[10px] text-[#D4AF37]/60">{(settings.audioFx?.echoTime ?? 0.25).toFixed(2)}s</span>
+                  </div>
+                  <Slider min={0.05} max={1} step={0.05} value={[settings.audioFx?.echoTime ?? 0.25]}
+                    onValueChange={(v) => setAudioFx({ echoTime: v[0] ?? 0.25, preset: "none" })} />
+                </div>
+
+                <p className="text-[10px] text-[#D4AF37]/50">
+                  Dê play para ouvir os ajustes de áudio no preview.
+                </p>
+              </div>
             </CardContent>
+
           </Card>
         </TabsContent>
 
