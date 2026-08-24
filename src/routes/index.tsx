@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
@@ -26,7 +28,11 @@ function LandingPage() {
     setLoading(true);
     try {
       const { data, error } = type === "signup" 
-        ? await supabase.auth.signUp({ email, password })
+        ? await supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+          })
         : await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
@@ -51,16 +57,15 @@ function LandingPage() {
 
   const handleGoogleLogin = async () => {
     try {
-      await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
+      await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
       });
-    } catch (error) {
+    } catch (error: any) {
+      toast.error(error?.message ?? "Erro ao entrar com Google");
       console.error(error);
     }
   };
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A] p-4">
