@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, Package, FileText, CheckCircle, XCircle, ChevronRight, Video, Scissors } from "lucide-react";
+import { UiTextsManager } from "@/components/admin/UiTextsManager";
+
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -170,6 +172,9 @@ function AdminDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <UiTextsManager />
     </div>
+
   );
 }
