@@ -1,0 +1,86 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Sparkles, Upload, Video, CheckCircle2, Download } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useServerFn } from "@tanstack/react-start";
+import { generateVideoPlan } from "@/lib/video/ai.functions";
+import { VideoEditor, type EditorSettings } from "@/components/video/VideoEditor";
+
+export const Route=createFileRoute("/dashboard/studio")({component:VideoStudio});
+
+type Plan={hook?:string;scenes?:Array<{start:number;end:number;purpose:string;instruction:string;text?:string}>;captions?:Array<{start:number;end:number;text:string}>;cta?:string;editing_notes?:string[]};
+
+function VideoStudio(){
+ const inputRef=useRef<HTMLInputElement>(null);
+ const [source,setSource]=useState<{url:string;path:string;name:string}|null>(null);
+ const [uploading,setUploading]=useState(false);
+ const [projectId,setProjectId]=useState<string|null>(null);
+ const [title,setTitle]=useState("Novo vídeo TikTok Shop");
+ const [productName,setProductName]=useState("");
+ const [description,setDescription]=useState("");
+ const [script,setScript]=useState("");
+ const [duration,setDuration]=useState(20);
+ const [style,setStyle]=useState("ugc");
+ const [plan,setPlan]=useState<Plan|null>(null);
+ const [generating,setGenerating]=useState(false);
+ const [settings,setSettings]=useState<EditorSettings|undefined>();
+
+ const hasVideo=!!source;
+ const sceneCount=plan?.scenes?.length??0;
+ const planSummary=useMemo(()=>plan?`${sceneCount} cenas • ${plan.captions?.length??0} legendas • CTA ${plan.cta?"pronto":"não definido"}`:"Nenhum plano de IA gerado",[plan,sceneCount]);
+
+ const upload=async(file:File)=>{
+   if(!file.type.startsWith("video/")){toast.error("Selecione um arquivo de vídeo.");return;}
+   if(file.size>500*1024*1024){toast.error("O limite atual é 500 MB.");return;}
+   setUploading(true);
+   try{
+     const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error("Faça login novamente.");
+     const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"-");
+     const path=`${user.id}/${crypto.randomUUID()}-${safe}`;
+     const {error}=await supabase.storage.from("videos").upload(path,file,{contentType:file.type,upsert:false});
+     if(error)throw error;
+     const {data:urlData}=supabase.storage.from("videos").getPublicUrl(path);
+     const url=urlData.publicUrl;
+     const {data:project,error:projectError}=await supabase.from("video_projects").insert({user_id:user.id,title,source_url:url,source_path:path,settings:{},status:"draft"}).select("id").single();
+     if(projectError)throw projectError;
+     setProjectId(project.id); setSource({url,path,name:file.name}); setSettings(undefined); toast.success("Vídeo enviado para o Studio.");
+   }catch(e:any){toast.error(e?.message||"Não foi possível enviar o vídeo.");}
+   finally{setUploading(false)}
+ };
+
+ const generate=async()=>{
+   if(!productName.trim()){toast.error("Informe o produto antes de gerar o plano.");return;}
+   setGenerating(true);
+   try{const fn=useServerFn(generateVideoPlan); const result=await fn({productName,productDescription:description,script,duration,style:style as any,language:"pt-BR"}); setPlan(result as Plan); toast.success("Plano de vídeo gerado pela IA.");}
+   catch(e:any){toast.error(e?.message||"A IA não conseguiu gerar o plano.");}
+   finally{setGenerating(false)}
+ };
+
+ const save=async(next:EditorSettings)=>{
+   if(!projectId)throw new Error("Nenhum projeto aberto.");
+   const {error}=await supabase.from("video_projects").update({title,settings:next,status:"ready"}).eq("id",projectId);
+   if(error)throw error; setSettings(next);
+ };
+
+ return <div className="space-y-6">
+   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+     <div><h1 className="text-2xl md:text-3xl font-semibold text-white">Studio de Vídeo</h1><p className="text-sm text-white/50 mt-1">Do upload ao vídeo pronto para publicar.</p></div>
+     {source&&<div className="flex items-center gap-2 text-xs text-emerald-400"><CheckCircle2 className="h-4 w-4"/>Projeto conectado ao banco</div>}
+   </div>
+
+   {!hasVideo&&<Card className="bg-[#0A0A0A] border-[#D4AF37]/20 border-dashed"><CardContent className="p-8 md:p-14 text-center"><input ref={inputRef} type="file" accept="video/*" className="hidden" onChange={e=>{const f=e.target.files?.[0];if(f)void upload(f)}}/><div className="mx-auto h-16 w-16 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center mb-5"><Upload className="h-7 w-7 text-[#D4AF37]"/></div><h2 className="text-xl text-white font-medium">Envie o vídeo bruto</h2><p className="text-sm text-white/50 max-w-md mx-auto mt-2">O vídeo entra no projeto, fica armazenado no Supabase e abre diretamente no editor real.</p><Button onClick={()=>inputRef.current?.click()} disabled={uploading} className="mt-6 bg-[#D4AF37] text-black hover:bg-[#D4AF37]/90">{uploading?<><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Enviando...</>:<><Upload className="mr-2 h-4 w-4"/>Escolher vídeo</>}</Button></CardContent></Card>}
+
+   {hasVideo&&<>
+     <Card className="bg-[#0A0A0A] border-[#D4AF37]/20"><CardHeader><CardTitle className="text-white flex items-center gap-2"><Sparkles className="h-5 w-5 text-[#D4AF37]"/>Diretor IA</CardTitle></CardHeader><CardContent className="space-y-4"><div className="grid md:grid-cols-2 gap-4"><div><Label>Nome do projeto</Label><Input value={title} onChange={e=>setTitle(e.target.value)} className="mt-1"/></div><div><Label>Produto</Label><Input value={productName} onChange={e=>setProductName(e.target.value)} placeholder="Ex.: Air Fryer 5L" className="mt-1"/></div><div className="md:col-span-2"><Label>Descrição/benefícios</Label><Textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Cole a descrição do produto, benefícios, público e oferta..." className="mt-1 min-h-24"/></div><div className="md:col-span-2"><Label>Roteiro existente (opcional)</Label><Textarea value={script} onChange={e=>setScript(e.target.value)} placeholder="Se já tiver roteiro, cole aqui." className="mt-1 min-h-20"/></div><div><Label>Duração alvo</Label><Select value={String(duration)} onValueChange={v=>setDuration(Number(v))}><SelectTrigger className="mt-1"><SelectValue/></SelectTrigger><SelectContent>{[15,20,30,45,60].map(v=><SelectItem key={v} value={String(v)}>{v} segundos</SelectItem>)}</SelectContent></Select></div><div><Label>Estilo</Label><Select value={style} onValueChange={setStyle}><SelectTrigger className="mt-1"><SelectValue/></SelectTrigger><SelectContent>{[["ugc","UGC"],["review","Review"],["problem-solution","Problema → solução"],["offer","Oferta"],["unboxing","Unboxing"],["storytelling","Storytelling"]].map(([v,l])=><SelectItem key={v} value={v}>{l}</SelectItem>)}</Select></div></div><Button onClick={generate} disabled={generating} className="bg-[#D4AF37] text-black">{generating?<><Loader2 className="mr-2 h-4 w-4 animate-spin"/>Criando plano...</>:<><Sparkles className="mr-2 h-4 w-4"/>Criar vídeo com IA</>}</Button>{plan&&<div className="rounded-lg border border-[#D4AF37]/20 bg-white/[.02] p-4 space-y-3"><div className="flex flex-wrap gap-2 text-xs text-[#D4AF37]"><span>{planSummary}</span></div>{plan.hook&&<p className="text-white"><b>Hook:</b> {plan.hook}</p>}{plan.cta&&<p className="text-white"><b>CTA:</b> {plan.cta}</p>}<div className="grid md:grid-cols-2 gap-2">{plan.scenes?.map((s,i)=><div key={i} className="rounded border border-white/10 p-3"><div className="text-xs text-[#D4AF37]">Cena {i+1} · {s.start}s–{s.end}s</div><div className="text-sm text-white mt-1">{s.instruction}</div>{s.text&&<div className="text-xs text-white/60 mt-1">Texto: {s.text}</div>}</div>)}</div></div>}</CardContent></Card>
+
+     <Card className="bg-[#0A0A0A] border-[#D4AF37]/20"><CardHeader><CardTitle className="text-white flex items-center gap-2"><Video className="h-5 w-5 text-[#D4AF37]"/>Editor real</CardTitle></CardHeader><CardContent className="p-2 md:p-4"><VideoEditor videoUrl={source.url} initialSettings={settings} onSave={save}/></CardContent></Card>
+   </>}
+ </div>
+}
