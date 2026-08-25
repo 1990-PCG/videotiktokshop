@@ -1,0 +1,6 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+const db=(context:any)=>(context.supabase as any);
+export const registerVideoExport=createServerFn({method:"POST"}).middleware([requireSupabaseAuth]).inputValidator(d=>z.object({projectId:z.string().uuid().optional(),storagePath:z.string().min(1),publicUrl:z.string().url(),mimeType:z.string().default("video/mp4"),width:z.number().optional(),height:z.number().optional(),duration:z.number().optional()}).parse(d)).handler(async({context,data})=>{const{data:row,error}=await db(context).from("video_exports").insert({project_id:data.projectId||null,user_id:context.userId,storage_path:data.storagePath,public_url:data.publicUrl,mime_type:data.mimeType,width:data.width||null,height:data.height||null,duration:data.duration||null,status:"completed",completed_at:new Date().toISOString()}).select("*").single();if(error)throw error;return row});
+export const listVideoExports=createServerFn({method:"GET"}).middleware([requireSupabaseAuth]).handler(async({context})=>{const{data,error}=await db(context).from("video_exports").select("*").eq("user_id",context.userId).order("created_at",{ascending:false}).limit(50);if(error)throw error;return data||[]});
