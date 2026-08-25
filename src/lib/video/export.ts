@@ -1,97 +1,14 @@
 import { FFmpeg } from "@ffmpeg/ffmpeg";
-import { fetchFile, toBlobURL } from "@ffmpeg/util";
+import { fetchFile,toBlobURL } from "@ffmpeg/util";
 import type { EditorSettings } from "@/components/video/VideoEditor";
-
-let ffmpeg: FFmpeg | null = null;
-let loading: Promise<FFmpeg> | null = null;
-
-async function getFFmpeg(onProgress?: (progress: number) => void) {
-  if (ffmpeg?.loaded) return ffmpeg;
-  if (loading) return loading;
-  loading = (async () => {
-    const instance = new FFmpeg();
-    instance.on("progress", ({ progress }) => onProgress?.(Math.max(0, Math.min(1, progress))));
-    const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
-    await instance.load({ coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"), wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm") });
-    ffmpeg = instance;
-    return instance;
-  })();
-  try { return await loading; } finally { loading = null; }
-}
-
-function esc(text: string) { return text.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/:/g, "\\:").replace(/,/g, "\\,").replace(/\[/g, "\\[").replace(/\]/g, "\\]"); }
-function filter(settings: EditorSettings) {
-  const parts: string[] = [];
-  const brightness = ((settings.brightness ?? 100) - 100) / 100;
-  const contrast = (settings.contrast ?? 100) / 100;
-  const saturation = (settings.saturation ?? 100) / 100;
-  if (brightness || contrast !== 1 || saturation !== 1) parts.push(`eq=brightness=${brightness}:contrast=${contrast}:saturation=${saturation}`);
-  if (settings.filter === "bw") parts.push("hue=s=0");
-  if (settings.filter === "vivid") parts.push("eq=contrast=1.1:saturation=1.5");
-  if (settings.filter === "cinema") parts.push("eq=contrast=1.2:saturation=0.9");
-  if (settings.filter === "vintage") parts.push("colorbalance=rs=.08:gs=.02:bs=-.04,eq=saturation=1.2");
-  if (settings.filter === "warm") parts.push("colorbalance=rs=.08:gs=.02:bs=-.05");
-  if (settings.filter === "cool") parts.push("colorbalance=rs=-.04:gs=.02:bs=.08");
-  return parts.join(",");
-}
-function aspect(settings: EditorSettings) {
-  if (settings.aspect === "9:16") return "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2:black";
-  if (settings.aspect === "1:1") return "scale=1080:1080:force_original_aspect_ratio=decrease,pad=1080:1080:(ow-iw)/2:(oh-ih)/2:black";
-  if (settings.aspect === "16:9") return "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black";
-  return "scale=trunc(iw/2)*2:trunc(ih/2)*2";
-}
-
-/** Renderiza o vídeo no navegador e retorna o MP4 final. */
-export async function exportVideo(source: File | Blob | string, settings: EditorSettings, onProgress?: (progress: number) => void) {
-  const engine = await getFFmpeg(onProgress);
-  await engine.writeFile("source.mp4", await fetchFile(source));
-  const vf: string[] = [aspect(settings)];
-  const color = filter(settings); if (color) vf.push(color);
-  if (settings.speed && settings.speed !== 1) vf.push(`setpts=${(1 / settings.speed).toFixed(4)}*PTS`);
-  if (settings.fadeIn) vf.push("fade=t=in:st=0:d=0.6");
-  const duration = Math.max(0, (settings.endTime || 0) - (settings.startTime || 0));
-  if (settings.fadeOut && duration > 0) vf.push(`fade=t=out:st=${Math.max(0, duration - 0.6)}:d=0.6`);
-  for (const text of settings.texts ?? []) {
-    if (!text.text.trim()) continue;
-    const start = Math.max(0, text.start - (settings.startTime || 0));
-    const end = Math.max(start, text.end - (settings.startTime || 0));
-    const y = `(h*${Math.max(0, Math.min(100, text.y))}/100)-text_h/2`;
-    const bg = text.background ? ":box=1:boxcolor=black@0.55:boxborderw=10" : "";
-    vf.push(`drawtext=text='${esc(text.text)}':fontcolor=${text.color}:fontsize=${Math.max(12, text.size)}:x=(w-text_w)/2:y=${y}:enable='between(t,${start},${end})':shadowcolor=black@0.9:shadowx=2:shadowy=2${bg}`);
-  }
-  const args = ["-i", "source.mp4"];
-  if (settings.startTime > 0) args.push("-ss", String(settings.startTime));
-  if (settings.endTime > settings.startTime) args.push("-to", String(settings.endTime));
-  args.push("-vf", vf.join(","), "-af", `volume=${Math.max(0, Math.min(1, settings.volume ?? 1))}`, "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart", "-y", "export.mp4");
-  await engine.exec(args);
-  const data = await engine.readFile("export.mp4");
-  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data as ArrayBuffer);
-  return new Blob([bytes.buffer as ArrayBuffer], { type: "video/mp4" });
-}
-
-export async function renderAndUploadVideo(params: {
-  source: File | Blob | string;
-  settings: EditorSettings;
-  projectId: string;
-  userId: string;
-  onProgress?: (progress: number) => void;
-}) {
-  const { supabase } = await import("@/integrations/supabase/client");
-  const exportId = crypto.randomUUID();
-  const { error: createError } = await supabase.from("video_exports").insert({ id: exportId, project_id: params.projectId, user_id: params.userId, status: "processing", mime_type: "video/mp4" });
-  if (createError) throw createError;
-  try {
-    const blob = await exportVideo(params.source, params.settings, params.onProgress);
-    const path = `${params.userId}/${params.projectId}/${exportId}.mp4`;
-    const { error: uploadError } = await supabase.storage.from("videos").upload(path, blob, { contentType: "video/mp4", upsert: false });
-    if (uploadError) throw uploadError;
-    const { data: urlData } = supabase.storage.from("videos").getPublicUrl(path);
-    const { error: updateError } = await supabase.from("video_exports").update({ storage_path: path, public_url: urlData.publicUrl, status: "completed", completed_at: new Date().toISOString(), width: params.settings.aspect === "9:16" ? 720 : params.settings.aspect === "1:1" ? 1080 : 1280, height: params.settings.aspect === "9:16" ? 1280 : params.settings.aspect === "1:1" ? 1080 : 720, duration: Math.max(0, params.settings.endTime - params.settings.startTime) }).eq("id", exportId);
-    if (updateError) throw updateError;
-    await supabase.from("video_projects").update({ status: "ready" }).eq("id", params.projectId);
-    return { exportId, publicUrl: urlData.publicUrl, storagePath: path };
-  } catch (error) {
-    await supabase.from("video_exports").update({ status: "failed", error_message: error instanceof Error ? error.message : String(error) }).eq("id", exportId);
-    throw error;
-  }
-}
+import type { VideoProjectSettings } from "@/lib/video/types";
+let ffmpeg:FFmpeg|null=null;let loading:Promise<FFmpeg>|null=null;
+async function getFFmpeg(onProgress?:(p:number)=>void){if(ffmpeg?.loaded)return ffmpeg;if(loading)return loading;loading=(async()=>{const x=new FFmpeg();x.on("progress",({progress})=>onProgress?.(Math.max(0,Math.min(1,progress))));const b="https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";await x.load({coreURL:await toBlobURL(`${b}/ffmpeg-core.js`,`text/javascript`),wasmURL:await toBlobURL(`${b}/ffmpeg-core.wasm`,`application/wasm`)});ffmpeg=x;return x})();try{return await loading}finally{loading=null}}
+const esc=(t:string)=>t.replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/:/g,"\\:").replace(/,/g,"\\,");
+function size(s:VideoProjectSettings){if(s.aspect==="9:16")return s.resolution==="720p"?"720:1280":s.resolution==="1440p"?"1440:2560":s.resolution==="2160p"?"2160:3840":"1080:1920";if(s.aspect==="1:1")return `${s.resolution==="720p"?720:s.resolution==="1440p"?1440:s.resolution==="2160p"?2160:1080}:${s.resolution==="720p"?720:s.resolution==="1440p"?1440:s.resolution==="2160p"?2160:1080}`;return s.resolution==="720p"?"1280:720":s.resolution==="1440p"?"2560:1440":s.resolution==="2160p"?"3840:2160":"1920:1080"}
+function vf(s:VideoProjectSettings){const z=size(s).split(":");const a=[`scale=${z[0]}:${z[1]}:force_original_aspect_ratio=decrease`,`pad=${z[0]}:${z[1]}:(ow-iw)/2:(oh-ih)/2:black`];if(s.filter==="bw")a.push("hue=s=0");if(s.filter==="vivid")a.push("eq=contrast=1.1:saturation=1.5");if(s.filter==="cinema")a.push("eq=contrast=1.2:saturation=.9");if(s.motionTransfer==="slow-zoom")a.push("zoompan=z='min(zoom+0.0008,1.12)':d=1:s="+size(s)+":fps="+s.fps);if(s.motionTransfer==="ken-burns")a.push("zoompan=z='min(zoom+0.001,1.18)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s="+size(s)+":fps="+s.fps);for(const t of s.texts){const st=Math.max(0,t.start),en=Math.max(st,t.end),bg=t.background?":box=1:boxcolor=black@.55:boxborderw=10":"";a.push(`drawtext=text='${esc(t.text)}':fontcolor=${t.color}:fontsize=${Math.max(12,t.size)}:x=(w*${Math.max(0,Math.min(100,t.x))}/100)-text_w/2:y=(h*${Math.max(0,Math.min(100,t.y))}/100)-text_h/2:enable='between(t,${st},${en})':shadowcolor=black@.9:shadowx=2:shadowy=2${bg}`)}return a.join(",")}
+export async function exportVideo(source:File|Blob|string,settings:EditorSettings,onProgress?:(p:number)=>void){const x=await getFFmpeg(onProgress);await x.writeFile("source.mp4",await fetchFile(source));const filters:string[]=[];if(settings.aspect==="9:16")filters.push("scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(ow-iw)/2:(oh-ih)/2:black");else if(settings.aspect==="1:1")filters.push("scale=1080:1080:force_original_aspect_ratio=decrease,pad=1080:1080:(ow-iw)/2:(oh-ih)/2:black");else filters.push("scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:black");await x.exec(["-i","source.mp4","-vf",filters.join(","),"-r","30","-c:v","libx264","-crf","23","-c:a","aac","-movflags","+faststart","-y","export.mp4"]);const d=await x.readFile("export.mp4");const b=d instanceof Uint8Array?d:new Uint8Array(d as ArrayBuffer);return new Blob([b.buffer as ArrayBuffer],{type:"video/mp4"})}
+export async function renderProjectAndUpload(params:{settings:VideoProjectSettings;projectId:string;userId:string;onProgress?:(p:number)=>void}){const {supabase}=await import("@/integrations/supabase/client");const id=crypto.randomUUID();const {error}=await supabase.from("video_exports").insert({id,project_id:params.projectId,user_id:params.userId,status:"processing",mime_type:"video/mp4"});if(error)throw error;try{const x=await getFFmpeg(params.onProgress);for(let i=0;i<params.settings.clips.length;i++){const c=params.settings.clips[i];await x.writeFile(`clip${i}.mp4`,await fetchFile(c.url))}
+ const concat=params.settings.clips.map((_,i)=>`file 'clip${i}.mp4'`).join("\n");await x.writeFile("concat.txt",concat);const filters=vf(params.settings);const base=["-f","concat","-safe","0","-i","concat.txt"];if(params.settings.audio?.url){await x.writeFile("audio.ext",await fetchFile(params.settings.audio.url));const off=params.settings.audio.offset;const audioArgs=off>=0?["-itsoffset",String(off),"-i","audio.ext"]:["-i","audio.ext"];base.push(...audioArgs)}const out=["-vf",filters,"-r",String(params.settings.fps),"-c:v","libx264","-preset","veryfast","-crf","23","-pix_fmt","yuv420p","-c:a","aac","-b:a","160k","-movflags","+faststart"];if(params.settings.audio){out.push("-map","0:v:0","-map","1:a:0");if(params.settings.audio.replaceOriginal)out.push("-shortest")}out.push("-y","project.mp4");await x.exec([...base,...out]);if(params.settings.loopLive&&params.settings.loopCount>1){await x.exec(["-stream_loop",String(params.settings.loopCount-1),"-i","project.mp4","-c","copy","-y","live.mp4"]);}
+ const finalName=params.settings.loopLive&&params.settings.loopCount>1?"live.mp4":"project.mp4";const data=await x.readFile(finalName);const bytes=data instanceof Uint8Array?data:new Uint8Array(data as ArrayBuffer);const blob=new Blob([bytes.buffer as ArrayBuffer],{type:"video/mp4"});const path=`${params.userId}/${params.projectId}/${id}.mp4`;const up=await supabase.storage.from("videos").upload(path,blob,{contentType:"video/mp4",upsert:false});if(up.error)throw up.error;const pub=supabase.storage.from("videos").getPublicUrl(path).data.publicUrl;const dur=params.settings.clips.reduce((n,c)=>n+Math.max(0,c.end-c.start),0)*(params.settings.loopLive?params.settings.loopCount:1);const [w,h]=size(params.settings).split(":").map(Number);const upd=await supabase.from("video_exports").update({storage_path:path,public_url:pub,status:"completed",completed_at:new Date().toISOString(),width:w,height:h,duration:dur}).eq("id",id);if(upd.error)throw upd.error;await supabase.from("video_projects").update({settings:params.settings,status:"ready"}).eq("id",params.projectId);return{exportId:id,publicUrl:pub,storagePath:path,duration:dur};}catch(e){await supabase.from("video_exports").update({status:"failed",error_message:e instanceof Error?e.message:String(e)}).eq("id",id);throw e}}
+export async function renderAndUploadVideo(params:{source:File|Blob|string;settings:EditorSettings;projectId:string;userId:string;onProgress?:(p:number)=>void}){const blob=await exportVideo(params.source,params.settings,params.onProgress);const {supabase}=await import("@/integrations/supabase/client");const id=crypto.randomUUID(),path=`${params.userId}/${params.projectId}/${id}.mp4`;const up=await supabase.storage.from("videos").upload(path,blob,{contentType:"video/mp4",upsert:false});if(up.error)throw up.error;const pub=supabase.storage.from("videos").getPublicUrl(path).data.publicUrl;await supabase.from("video_exports").insert({id,project_id:params.projectId,user_id:params.userId,status:"completed",mime_type:"video/mp4",storage_path:path,public_url:pub,completed_at:new Date().toISOString()});return{exportId:id,publicUrl:pub,storagePath:path}}
