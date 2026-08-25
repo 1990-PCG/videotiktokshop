@@ -1,0 +1,5 @@
+create table if not exists public.ui_textos (id uuid primary key default gen_random_uuid(), chave text not null unique, valor text not null, descricao text, updated_at timestamptz not null default now());
+alter table public.ui_textos enable row level security;
+create policy "ui_textos_read" on public.ui_textos for select to authenticated using (true);
+create policy "ui_textos_admin_write" on public.ui_textos for all to authenticated using (public.has_role(auth.uid(),'admin')) with check (public.has_role(auth.uid(),'admin'));
+insert into public.ui_textos(chave,valor,descricao) values ('app.hero.title','Crie vídeos que vendem','Título principal'),('app.hero.subtitle','Transforme produtos em conteúdo pronto para TikTok Shop.','Subtítulo principal'),('studio.subtitle','Crie, edite, renderize e publique sem sair do projeto.','Subtítulo do Studio'),('editor.export.title','Exportação profissional','Título da exportação') on conflict (chave) do nothing;
