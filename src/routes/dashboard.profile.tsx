@@ -1,7 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getMyBilling } from "@/lib/billing.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, LogOut, Mail, Calendar, ShieldCheck } from "lucide-react";
+import { User, LogOut, Mail, Calendar, ShieldCheck, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 
@@ -12,6 +15,12 @@ export const Route = createFileRoute("/dashboard/profile")({
 function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
+  const getBillingFn = useServerFn(getMyBilling);
+  const { data: billing } = useQuery({
+    queryKey: ["my-billing"],
+    queryFn: () => getBillingFn(),
+    enabled: !!user,
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -71,11 +80,17 @@ function Profile() {
 
           <div className="flex items-center gap-4">
             <div className="p-2 rounded-md bg-[#0A0A0A] border border-[#262626]">
-              <ShieldCheck className="h-4 w-4 text-[#D4AF37]/60" />
+              {billing && !billing.pagamentoEmDia ? (
+                <AlertCircle className="h-4 w-4 text-red-500" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 text-[#D4AF37]/60" />
+              )}
             </div>
             <div>
               <p className="text-[#FAFAFA]/40 text-xs uppercase tracking-wider">Status da Conta</p>
-              <p className="text-[#FAFAFA] font-light">Ativa</p>
+              <p className={billing && !billing.pagamentoEmDia ? "text-red-500 font-light" : "text-[#FAFAFA] font-light"}>
+                {!billing ? "Carregando..." : billing.pagamentoEmDia ? "Ativa" : "Pagamento pendente"}
+              </p>
             </div>
           </div>
         </CardContent>
