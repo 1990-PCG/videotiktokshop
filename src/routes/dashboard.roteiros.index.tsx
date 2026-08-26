@@ -335,6 +335,7 @@ function RoteirosIndexView() {
             <VideoEditor 
               videoUrl={editingSettingsVideo.video_url}
               initialSettings={editingSettingsVideo.video_settings}
+              scriptText={[editingSettingsVideo.hook, editingSettingsVideo.roteiro, editingSettingsVideo.cta].filter(Boolean).join(" ")}
               onSave={async (settings) => {
                 updateSettings({
                   roteiroRowId: editingSettingsVideo.roteiroRowId,
