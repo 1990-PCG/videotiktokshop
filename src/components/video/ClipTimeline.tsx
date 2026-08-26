@@ -1,248 +1,54 @@
-import { useEffect, useRef, useState } from "react";
-import { GripVertical, Trash2 } from "lucide-react";
-import type { VideoClip } from "@/lib/video/types";
-
-// Escala fixa da linha do tempo (pixels por segundo). Clipes maiores ficam
-// visualmente mais largos, proporcional à duração já cortada (end - start).
-const PX_PER_SEC = 50;
-const MIN_LEN = 0.3; // duração mínima que um clipe pode ter após cortar
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-interface ClipTimelineProps {
-  clips: VideoClip[];
-  activeIndex: number;
-  time: number;
-  onSelect: (i: number) => void;
-  onSeek: (sec: number) => void;
-  onReorder: (from: number, to: number) => void;
-  onTrim: (index: number, patch: Partial<Pick<VideoClip, "start" | "end">>) => void;
-  onRemove: (index: number) => void;
-  onDropFiles: (files: FileList) => void;
-}
-
-/**
- * Linha do tempo visual estilo CapCut para o Studio Pro:
- * - cada clipe aparece como um bloco com miniatura, proporcional à duração
- * - arraste o bloco pelo "grip" para reordenar os clipes
- * - arraste as bordas esquerda/direita do bloco para cortar início/fim
- * - arraste um arquivo de vídeo do computador para cima da área pra adicionar
- * - clique no bloco para selecionar aquele clipe e posicionar a reprodução
- *
- * Observação importante (limite conhecido): a pré-visualização continua
- * tocando UM clipe por vez (o "ativo") — não existe ainda reprodução
- * contínua emendando todos os clipes na prévia, isso exigiria remontar o
- * player por completo. Esta timeline é sobre organizar/cortar/reordenar
- * os clipes; a costura de verdade entre eles acontece na exportação.
- */
-export function ClipTimeline({
-  clips,
-  activeIndex,
-  time,
-  onSelect,
-  onSeek,
-  onReorder,
-  onTrim,
-  onRemove,
-  onDropFiles,
-}: ClipTimelineProps) {
-  const [thumbs, setThumbs] = useState<Record<string, string>>({});
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
-  const [isFileOver, setIsFileOver] = useState(false);
-  const trimming = useRef<{ index: number; edge: "start" | "end"; startX: number; original: number } | null>(null);
-
-  // Gera uma miniatura (1 frame) por clipe, uma única vez, para dar a
-  // sensação de "filminho" dentro do bloco (igual ao CapCut).
-  useEffect(() => {
-    clips.forEach((c) => {
-      if (thumbs[c.id]) return;
-      const v = document.createElement("video");
-      v.crossOrigin = "anonymous";
-      v.preload = "auto";
-      v.muted = true;
-      v.src = c.url;
-      const capture = () => {
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = 80;
-          canvas.height = 142;
-          const ctx = canvas.getContext("2d");
-          if (!ctx) return;
-          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-          setThumbs((t) => ({ ...t, [c.id]: canvas.toDataURL("image/jpeg", 0.6) }));
-        } catch {
-          // Se o navegador não deixar capturar o frame por algum motivo,
-          // seguimos sem miniatura — o bloco continua funcional mesmo assim.
-        }
-      };
-      v.addEventListener("loadeddata", () => {
-        v.currentTime = Math.min(0.15, (c.duration || 0) / 2 || 0);
-      });
-      v.addEventListener("seeked", capture, { once: true });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clips.map((c) => c.id).join(",")]);
-
-  const startTrim = (index: number, edge: "start" | "end") => (e: React.PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    const c = clips[index];
-    if (!c) return;
-    trimming.current = { index, edge, startX: e.clientX, original: edge === "start" ? c.start : c.end };
-    const move = (ev: PointerEvent) => {
-      const st = trimming.current;
-      if (!st) return;
-      const clip = clips[st.index];
-      if (!clip) return;
-      const deltaSec = (ev.clientX - st.startX) / PX_PER_SEC;
-      if (st.edge === "start") {
-        onTrim(st.index, { start: clamp(st.original + deltaSec, 0, clip.end - MIN_LEN) });
-      } else {
-        onTrim(st.index, { end: clamp(st.original + deltaSec, clip.start + MIN_LEN, clip.duration) });
-      }
-    };
-    const up = () => {
-      trimming.current = null;
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-  };
-
-  return (
-    <div
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes("Files")) {
-          e.preventDefault();
-          setIsFileOver(true);
-        }
-      }}
-      onDragLeave={() => setIsFileOver(false)}
-      onDrop={(e) => {
-        if (e.dataTransfer.files?.length) {
-          e.preventDefault();
-          setIsFileOver(false);
-          onDropFiles(e.dataTransfer.files);
-        }
-      }}
-      className={`rounded-lg border p-2 transition-colors ${
-        isFileOver ? "border-[#D4AF37] bg-[#D4AF37]/5" : "border-white/10"
-      }`}
-    >
-      <div className="flex items-center justify-between mb-1.5 gap-2 flex-wrap">
-        <span className="text-[10px] uppercase tracking-widest text-white/50">Linha do tempo</span>
-        <span className="text-[10px] text-white/30">
-          Arraste um vídeo aqui para adicionar · segure o ⠿ para reordenar · arraste as bordas para cortar
-        </span>
-      </div>
-
-      {!clips.length ? (
-        <div className="h-16 flex items-center justify-center text-xs text-white/30 border border-dashed border-white/15 rounded">
-          Nenhum vídeo ainda — arraste um arquivo aqui ou use "Adicionar vídeos"
-        </div>
-      ) : (
-        <div className="flex gap-1 overflow-x-auto pb-1">
-          {clips.map((c, i) => {
-            const width = Math.max(56, (c.end - c.start) * PX_PER_SEC);
-            const isDragTarget = overIndex === i && dragIndex !== null && dragIndex !== i;
-            return (
-              <div
-                key={c.id}
-                onDragOver={(e) => {
-                  if (dragIndex !== null) {
-                    e.preventDefault();
-                    setOverIndex(i);
-                  }
-                }}
-                onDrop={(e) => {
-                  if (dragIndex !== null) {
-                    e.preventDefault();
-                    if (dragIndex !== i) onReorder(dragIndex, i);
-                  }
-                  setDragIndex(null);
-                  setOverIndex(null);
-                }}
-                className={`relative shrink-0 h-16 rounded overflow-hidden border-2 bg-black ${
-                  i === activeIndex ? "border-[#D4AF37]" : isDragTarget ? "border-[#D4AF37]/50" : "border-white/10"
-                }`}
-                style={{ width }}
-              >
-                {thumbs[c.id] && (
-                  <div
-                    className="absolute inset-0 opacity-90"
-                    style={{
-                      backgroundImage: `url(${thumbs[c.id]})`,
-                      backgroundRepeat: "repeat-x",
-                      backgroundSize: "auto 100%",
-                    }}
-                  />
-                )}
-                {/* Área clicável: seleciona o clipe e posiciona a reprodução no ponto clicado */}
-                <div
-                  className="absolute inset-0 cursor-pointer"
-                  onClick={(e) => {
-                    onSelect(i);
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    const relSec = c.start + (e.clientX - rect.left) / PX_PER_SEC;
-                    onSeek(clamp(relSec, c.start, c.end));
-                  }}
-                />
-                {/* Alça para arrastar e reordenar */}
-                <div
-                  draggable
-                  onDragStart={(e) => {
-                    setDragIndex(i);
-                    e.dataTransfer.effectAllowed = "move";
-                  }}
-                  onDragEnd={() => {
-                    setDragIndex(null);
-                    setOverIndex(null);
-                  }}
-                  className="absolute top-0.5 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing bg-black/60 rounded px-1 py-0.5 z-10"
-                  title="Arrastar para reordenar"
-                >
-                  <GripVertical className="h-3 w-3 text-white/80" />
-                </div>
-                {/* Alças de corte (início/fim) */}
-                <div
-                  onPointerDown={startTrim(i, "start")}
-                  className="absolute left-0 top-0 h-full w-2 cursor-ew-resize bg-white/30 hover:bg-[#D4AF37] z-10"
-                  title="Arrastar para cortar o início"
-                />
-                <div
-                  onPointerDown={startTrim(i, "end")}
-                  className="absolute right-0 top-0 h-full w-2 cursor-ew-resize bg-white/30 hover:bg-[#D4AF37] z-10"
-                  title="Arrastar para cortar o fim"
-                />
-                {/* Cursor de reprodução, só no clipe ativo */}
-                {i === activeIndex && (
-                  <div
-                    className="absolute top-0 h-full w-0.5 bg-red-500 z-10 pointer-events-none"
-                    style={{ left: clamp((time - c.start) * PX_PER_SEC, 0, width) }}
-                  />
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(i);
-                  }}
-                  className="absolute bottom-0.5 right-0.5 bg-black/60 rounded p-0.5 z-10 hover:bg-red-900/60"
-                  title="Remover clipe"
-                >
-                  <Trash2 className="h-3 w-3 text-white/70" />
-                </button>
-                <div className="absolute bottom-0.5 left-1 text-[9px] text-white/90 truncate max-w-[70%] z-10 drop-shadow">
-                  {i + 1}. {c.name}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+import { useEffect,useRef,useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card,CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select,SelectContent,SelectItem,SelectTrigger,SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/components/ui/tabs";
+import { Download,FileAudio,ImagePlus,Loader2,Plus,Scissors,Smile,Trash2,Upload,Wand2 } from "lucide-react";
+import { toast } from "sonner";
+import type { ExportPreset,ProjectText,TransitionKey,VideoClip,VideoFps,VideoProjectSettings,VideoResolution } from "@/lib/video/types";
+import { EXPORT_PRESETS } from "@/lib/video/types";
+import { FONT_OPTIONS,ensureFontLoaded,fontFamilyFor } from "@/lib/video/fonts";
+import { STICKER_PALETTE, type StickerAnim, type StickerOverlay } from "@/lib/video/overlays";
+import { VIDEO_TEMPLATES } from "@/lib/video/templates";
+import { ClipTimeline } from "@/components/video/ClipTimeline";
+interface Props{initial?:Partial<VideoProjectSettings>;onChange?:(s:VideoProjectSettings)=>void;onExport?:(s:VideoProjectSettings,p:(n:number)=>void)=>Promise<void>}
+const uid=()=>crypto.randomUUID();const fmt=(n:number)=>`${Math.floor(n/60)}:${String(Math.floor(n%60)).padStart(2,"0")}`;
+const base:VideoProjectSettings={clips:[],texts:[],stickers:[],aspect:"9:16",resolution:"1080p",fps:30,preset:"tiktok-1080-30",volume:1,speed:1,filter:"none",motionTransfer:"none",transition:"none",transitionDuration:0.5,loopLive:false,loopCount:1};
+export function ProVideoEditor({initial,onChange,onExport}:Props){
+ const[s,setS]=useState<VideoProjectSettings>({...base,...initial,clips:initial?.clips??[],texts:initial?.texts??[],stickers:initial?.stickers??[]}),[active,setActive]=useState(0),[time,setTime]=useState(0),[playing,setPlaying]=useState(false),[exporting,setExporting]=useState(false),[progress,setProgress]=useState(0),[started,setStarted]=useState(0),[selectedStickerId,setSelectedStickerId]=useState<string|null>(null);const v=useRef<HTMLVideoElement>(null),files=useRef<HTMLInputElement>(null),audio=useRef<HTMLInputElement>(null);const clip=s.clips[active];
+ useEffect(()=>onChange?.(s),[s,onChange]);useEffect(()=>{const e=v.current;if(!e)return;const meta=()=>setS(x=>{const a=[...x.clips];if(a[active])a[active]={...a[active],duration:e.duration||0,end:Math.min(a[active].end||e.duration,e.duration)};return{...x,clips:a}});const tick=()=>{setTime(e.currentTime);if(clip&&e.currentTime>=clip.end){e.currentTime=clip.start;e.pause();setPlaying(false)}};e.addEventListener("loadedmetadata",meta);e.addEventListener("timeupdate",tick);return()=>{e.removeEventListener("loadedmetadata",meta);e.removeEventListener("timeupdate",tick)}},[active,clip?.start,clip?.end]);
+ useEffect(()=>{s.texts.forEach(t=>ensureFontLoaded(t.font))},[s.texts]);
+ const total=s.clips.reduce((n,c)=>n+Math.max(0,c.end-c.start),0);const updateClip=(p:Partial<VideoClip>)=>setS(x=>({...x,clips:x.clips.map((c,i)=>i===active?{...c,...p}:c)}));
+ // --- Timeline visual (arrastar/reordenar/cortar) ---
+ const trimClipAt=(index:number,p:Partial<Pick<VideoClip,"start"|"end">>)=>setS(x=>({...x,clips:x.clips.map((c,i)=>i===index?{...c,...p}:c)}));
+ const reorderClips=(from:number,to:number)=>{setS(x=>{const a=[...x.clips];const[moved]=a.splice(from,1);if(moved)a.splice(to,0,moved);return{...x,clips:a}});setActive(a=>{if(a===from)return to;if(from<a&&to>=a)return a-1;if(from>a&&to<=a)return a+1;return a})};
+ const removeClipAt=(index:number)=>{setS(x=>({...x,clips:x.clips.filter((_,i)=>i!==index)}));setActive(a=>{if(index<a)return a-1;if(index===a)return Math.max(0,a-1);return a})};
+ const seekActive=(sec:number)=>{if(v.current)v.current.currentTime=sec;setTime(sec)};
+ const addVideos=async(list:FileList|null)=>{if(!list)return;const a:VideoClip[]=[];for(const f of Array.from(list)){if(!f.type.startsWith("video/"))continue;const url=URL.createObjectURL(f);const d=await new Promise<number>(r=>{const x=document.createElement("video");x.preload="metadata";x.onloadedmetadata=()=>r(x.duration||0);x.src=url});a.push({id:uid(),url,name:f.name,start:0,end:d,duration:d})}setS(x=>({...x,clips:[...x.clips,...a]}));if(a.length)toast.success(`${a.length} vídeo(s) adicionado(s).`)};
+ const addAudio=(f:File)=>{if(!f.type.startsWith("audio/")){toast.error("Escolha um arquivo de áudio.");return}setS(x=>({...x,audio:{url:URL.createObjectURL(f),name:f.name,offset:x.audio?.offset??0,volume:x.audio?.volume??1,replaceOriginal:true}}));toast.success("Áudio importado.")};
+ const addText=()=>setS(x=>({...x,texts:[...x.texts,{id:uid(),text:"Novo texto",start:0,end:Math.max(3,total),x:50,y:80,size:32,color:"#fff",background:true,font:"default"}]}));const editText=(id:string,p:Partial<ProjectText>)=>setS(x=>({...x,texts:x.texts.map(t=>t.id===id?{...t,...p}:t)}));
+ const addSticker=(emoji:string)=>{const st:StickerOverlay={id:uid(),emoji,start:0,end:Math.max(2,Math.min(3,total)),x:50,y:30,size:72,anim:"bounce"};setS(x=>({...x,stickers:[...(x.stickers??[]),st]}));setSelectedStickerId(st.id)};const updateSticker=(id:string,p:Partial<StickerOverlay>)=>setS(x=>({...x,stickers:(x.stickers??[]).map(t=>t.id===id?{...t,...p}:t)}));const removeSticker=(id:string)=>setS(x=>({...x,stickers:(x.stickers??[]).filter(t=>t.id!==id)}));const selectedSticker=(s.stickers??[]).find(t=>t.id===selectedStickerId)??null;
+ const applyTemplate=(key:string)=>{const tpl=VIDEO_TEMPLATES.find(t=>t.key===key);if(!tpl)return;setS(x=>({...x,filter:tpl.project.filter,motionTransfer:tpl.project.motionTransfer,transition:tpl.project.transition,texts:x.texts.map(t=>({...t,font:tpl.project.font}))}));toast.success(`Modelo "${tpl.label}" aplicado`)};
+ const exportNow=async()=>{if(!onExport||!s.clips.length)return;setExporting(true);setProgress(0);setStarted(Date.now());try{await onExport(s,setProgress);toast.success("Vídeo exportado com sucesso.")}catch(e:any){toast.error(e?.message||"Falha na exportação.")}finally{setExporting(false)}};const remain=progress>0?Math.ceil(((Date.now()-started)/1000)*(1-progress)/progress):0;
+ return <div className="grid xl:grid-cols-[1fr_390px] gap-4">
+  <Card className="bg-[#090909] border-white/10"><CardContent className="p-3 space-y-3">
+   <div className="space-y-2"><span className="text-[10px] uppercase tracking-widest text-white/50 flex items-center gap-1"><Wand2 className="h-3 w-3"/>Modelos prontos</span><div className="flex gap-2 overflow-x-auto pb-1">{VIDEO_TEMPLATES.map(t=><button key={t.key} onClick={()=>applyTemplate(t.key)} title={t.description} className="shrink-0 rounded-lg border border-white/10 bg-black px-3 py-2 hover:border-[#D4AF37]/60 text-xs text-white whitespace-nowrap">{t.label}</button>)}</div></div>
+   <div className="flex gap-2 flex-wrap"><input ref={files} hidden type="file" accept="video/*" multiple onChange={e=>void addVideos(e.target.files)}/><Button onClick={()=>files.current?.click()} variant="outline"><Upload className="mr-2 h-4 w-4"/>Adicionar vídeos</Button><input ref={audio} hidden type="file" accept="audio/*" onChange={e=>{const f=e.target.files?.[0];if(f)addAudio(f)}}/><Button onClick={()=>audio.current?.click()} variant="outline"><FileAudio className="mr-2 h-4 w-4"/>Importar áudio</Button></div>
+   <div className="bg-black rounded-xl flex justify-center"><div className="relative aspect-[9/16] h-[min(70vh,680px)]"><video ref={v} src={clip?.url} playsInline className="w-full h-full object-contain"/><div className="absolute inset-0">{s.texts.filter(t=>time>=t.start&&time<=t.end).map(t=><div key={t.id} style={{left:`${t.x}%`,top:`${t.y}%`,fontSize:t.size,color:t.color,fontFamily:fontFamilyFor(t.font)}} className="absolute -translate-x-1/2 -translate-y-1/2 font-bold text-center max-w-[90%] drop-shadow-lg">{t.background?<span className="bg-black/60 rounded px-2 py-1">{t.text}</span>:t.text}</div>)}{(s.stickers??[]).filter(st=>time>=st.start&&time<=st.end).map(st=><div key={st.id} className="absolute" style={{left:`${st.x}%`,top:`${st.y}%`,fontSize:st.size,lineHeight:1,transform:"translate(-50%,-50%)",animationName:st.anim==="bounce"?"ve-sticker-bounce":st.anim==="spin"?"ve-sticker-spin":"none",animationDuration:st.anim==="spin"?"1.6s":"0.9s",animationTimingFunction:st.anim==="spin"?"linear":"ease-in-out",animationIterationCount:"infinite",animationPlayState:playing?"running":"paused"}}>{st.emoji}</div>)}</div></div></div>
+   <div className="flex gap-2 items-center"><Button size="icon" variant="outline" onClick={()=>{if(!v.current)return;if(playing){v.current.pause();setPlaying(false)}else{if(v.current.currentTime<(clip?.start??0)||v.current.currentTime>=(clip?.end??0))v.current.currentTime=clip?.start||0;void v.current.play();setPlaying(true)}}}>{playing?"Ⅱ":"▶"}</Button><span className="text-xs text-white/60">{fmt(time)} / {fmt(clip?.end||0)}</span><Slider className="flex-1" value={[time]} min={clip?.start||0} max={clip?.end||1} step={.01} onValueChange={x=>{if(v.current)v.current.currentTime=x[0]||0}}/></div>
+   <ClipTimeline clips={s.clips} activeIndex={active} time={time} onSelect={i=>{setActive(i);setPlaying(false)}} onSeek={seekActive} onReorder={reorderClips} onTrim={trimClipAt} onRemove={removeClipAt} onDropFiles={list=>void addVideos(list)}/>
+   {s.clips.length>1 && <div className="text-[11px] text-white/40">{s.transition==="none"?"Corte seco entre os clipes.":`Transição "${s.transition}" de ${s.transitionDuration}s entre os clipes.`}</div>}
+  </CardContent></Card>
+  <Card className="bg-[#090909] border-white/10"><CardContent className="p-3"><Tabs defaultValue="cut"><TabsList className="grid grid-cols-6"><TabsTrigger value="cut">Corte</TabsTrigger><TabsTrigger value="text">Texto</TabsTrigger><TabsTrigger value="stickers">Stickers</TabsTrigger><TabsTrigger value="audio">Áudio</TabsTrigger><TabsTrigger value="motion">Motion</TabsTrigger><TabsTrigger value="export">Exportar</TabsTrigger></TabsList>
+   <TabsContent value="cut" className="space-y-4"><Label>Início {fmt(clip?.start||0)}</Label><Slider value={[clip?.start||0]} min={0} max={clip?.duration||1} step={.01} onValueChange={x=>updateClip({start:Math.min(x[0]||0,(clip?.end||1)-.05)})}/><Label>Fim {fmt(clip?.end||0)}</Label><Slider value={[clip?.end||1]} min={0} max={clip?.duration||1} step={.01} onValueChange={x=>updateClip({end:Math.max(x[0]||0,(clip?.start||0)+.05)})}/><Button onClick={()=>updateClip({start:time})} variant="outline" className="mr-2"><Scissors className="mr-2 h-4 w-4"/>Início</Button><Button onClick={()=>updateClip({end:time})} variant="outline">Fim</Button>{s.clips.length>1 && <div className="pt-3 border-t border-white/10 space-y-2"><Label>Transição entre clipes</Label><Select value={s.transition} onValueChange={x=>setS(q=>({...q,transition:x as TransitionKey}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">Nenhuma (corte seco)</SelectItem><SelectItem value="fade">Fade (esmaece)</SelectItem><SelectItem value="slide">Slide (desliza)</SelectItem><SelectItem value="wipe">Wipe (varredura)</SelectItem></SelectContent></Select></div>}</TabsContent>
+   <TabsContent value="text" className="space-y-3"><Button onClick={addText} className="w-full"><Plus className="mr-2 h-4 w-4"/>Adicionar texto</Button>{s.texts.map(t=><div key={t.id} className="border border-white/10 rounded p-2 space-y-2"><Input value={t.text} onChange={e=>editText(t.id,{text:e.target.value})}/><Label className="text-xs text-white/60">Fonte</Label><Select value={t.font??"default"} onValueChange={v2=>editText(t.id,{font:v2})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{FONT_OPTIONS.map(f=><SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}</SelectContent></Select><div className="grid grid-cols-2 gap-2"><Input type="number" value={t.start} onChange={e=>editText(t.id,{start:Number(e.target.value)})}/><Input type="number" value={t.end} onChange={e=>editText(t.id,{end:Number(e.target.value)})}/></div><Label>X {Math.round(t.x)}%</Label><Slider value={[t.x]} min={0} max={100} onValueChange={x=>editText(t.id,{x:x[0]||0})}/><Label>Y {Math.round(t.y)}%</Label><Slider value={[t.y]} min={0} max={100} onValueChange={x=>editText(t.id,{y:x[0]||0})}/><Button size="sm" variant="ghost" onClick={()=>setS(x=>({...x,texts:x.texts.filter(q=>q.id!==t.id)}))}><Trash2 className="mr-2 h-4 w-4"/>Excluir</Button></div>)}</TabsContent>
+   <TabsContent value="stickers" className="space-y-4"><Label className="text-white/70 flex items-center gap-1"><Smile className="h-3.5 w-3.5"/>Toque num emoji para adicionar</Label><div className="flex flex-wrap gap-2">{STICKER_PALETTE.map(e=><button key={e} onClick={()=>addSticker(e)} className="text-2xl rounded-lg border border-white/10 hover:border-[#D4AF37]/60 w-11 h-11 flex items-center justify-center">{e}</button>)}</div>{selectedSticker&&<div className="space-y-2 pt-2 border-t border-white/10"><div className="grid grid-cols-2 gap-2"><Input type="number" value={selectedSticker.start} onChange={e=>updateSticker(selectedSticker.id,{start:Number(e.target.value)})}/><Input type="number" value={selectedSticker.end} onChange={e=>updateSticker(selectedSticker.id,{end:Number(e.target.value)})}/></div><Label>X {Math.round(selectedSticker.x)}%</Label><Slider value={[selectedSticker.x]} min={0} max={100} onValueChange={x=>updateSticker(selectedSticker.id,{x:x[0]||0})}/><Label>Y {Math.round(selectedSticker.y)}%</Label><Slider value={[selectedSticker.y]} min={0} max={100} onValueChange={x=>updateSticker(selectedSticker.id,{y:x[0]||0})}/><Label>Tamanho</Label><Slider value={[selectedSticker.size]} min={24} max={200} onValueChange={x=>updateSticker(selectedSticker.id,{size:x[0]||72})}/><Label>Animação</Label><Select value={selectedSticker.anim} onValueChange={v2=>updateSticker(selectedSticker.id,{anim:v2 as StickerAnim})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">Nenhuma</SelectItem><SelectItem value="bounce">Saltar</SelectItem><SelectItem value="spin">Girar</SelectItem></SelectContent></Select><Button size="sm" variant="ghost" onClick={()=>removeSticker(selectedSticker.id)} className="text-red-400"><Trash2 className="mr-2 h-4 w-4"/>Excluir sticker</Button></div>}{!!(s.stickers?.length)&&<div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">{s.stickers!.map(st=><button key={st.id} onClick={()=>setSelectedStickerId(st.id)} className={`text-xl rounded-md border px-2 py-1 ${selectedStickerId===st.id?"border-[#D4AF37] bg-[#D4AF37]/10":"border-white/10"}`}>{st.emoji}</button>)}</div>}</TabsContent>
+   <TabsContent value="audio" className="space-y-4">{s.audio&&<><div className="text-sm text-white truncate">{s.audio.name}</div><Label>Offset {s.audio.offset.toFixed(2)}s</Label><Slider value={[s.audio.offset]} min={-10} max={10} step={.01} onValueChange={x=>setS(q=>({...q,audio:{...q.audio!,offset:x[0]||0}}))}/><Label>Volume</Label><Slider value={[s.audio.volume]} min={0} max={2} step={.01} onValueChange={x=>setS(q=>({...q,audio:{...q.audio!,volume:x[0]||0}}))}/><Button onClick={()=>setS(q=>({...q,audio:{...q.audio!,replaceOriginal:!q.audio!.replaceOriginal}}))}>{s.audio.replaceOriginal?"Substituir áudio original":"Misturar áudio original"}</Button></>}</TabsContent>
+   <TabsContent value="motion" className="space-y-4"><Label>Motion Transfer / animação de imagem</Label><Select value={s.motionTransfer} onValueChange={x=>setS(q=>({...q,motionTransfer:x as any}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="none">Nenhum</SelectItem><SelectItem value="slow-zoom">Slow Zoom</SelectItem><SelectItem value="ken-burns">Ken Burns</SelectItem><SelectItem value="face-follow">Face Follow · IA</SelectItem></SelectContent></Select><Button variant="outline" onClick={()=>toast.info("Face Follow fica preparado para conectar um modelo de Motion Transfer; a animação de imagem já pode ser renderizada por zoom/pan.")}><ImagePlus className="mr-2 h-4 w-4"/>Animar imagem</Button></TabsContent>
+   <TabsContent value="export" className="space-y-4"><Select value={s.preset} onValueChange={x=>{if(x==="custom")return setS(q=>({...q,preset:"custom"}));const p=EXPORT_PRESETS[x as keyof typeof EXPORT_PRESETS];setS(q=>({...q,preset:x as ExportPreset,resolution:p.resolution,fps:p.fps,aspect:p.height>p.width?"9:16":"16:9"}))}}><SelectTrigger><SelectValue placeholder="Preset"/></SelectTrigger><SelectContent>{Object.entries(EXPORT_PRESETS).map(([k,p])=><SelectItem key={k} value={k}>{p.label}</SelectItem>)}<SelectItem value="custom">Personalizado</SelectItem></SelectContent></Select><div className="grid grid-cols-2 gap-2"><div><Label>Resolução</Label><Select value={s.resolution} onValueChange={x=>setS(q=>({...q,resolution:x as VideoResolution,preset:"custom"}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{["720p","1080p","1440p","2160p"].map(x=><SelectItem key={x} value={x}>{x}</SelectItem>)}</SelectContent></Select></div><div><Label>FPS</Label><Select value={String(s.fps)} onValueChange={x=>setS(q=>({...q,fps:Number(x) as VideoFps,preset:"custom"}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{[24,30,60].map(x=><SelectItem key={x} value={String(x)}>{x} FPS</SelectItem>)}</SelectContent></Select></div></div><Select value={s.aspect} onValueChange={x=>setS(q=>({...q,aspect:x as any}))}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="9:16">9:16 TikTok</SelectItem><SelectItem value="1:1">1:1</SelectItem><SelectItem value="16:9">16:9</SelectItem></SelectContent></Select><Label className="flex gap-2 items-center"><input type="checkbox" checked={s.loopLive} onChange={e=>setS(q=>({...q,loopLive:e.target.checked,aspect:e.target.checked?"9:16":q.aspect}))}/>Live 1h30+ em loop 9:16</Label>{s.loopLive&&<div><Label>Repetições: {s.loopCount}</Label><Slider value={[s.loopCount]} min={1} max={120} step={1} onValueChange={x=>setS(q=>({...q,loopCount:x[0]||1}))}/></div>}<Button onClick={exportNow} disabled={exporting} className="w-full bg-[#D4AF37] text-black">{exporting?<><Loader2 className="mr-2 h-4 w-4 animate-spin"/>{Math.round(progress*100)}% {remain>0?`· ${remain}s restantes`:"· calculando"}</>:<><Download className="mr-2 h-4 w-4"/>Exportar</>}</Button></TabsContent>
+  </Tabs></CardContent></Card>
+ </div>;
 }
