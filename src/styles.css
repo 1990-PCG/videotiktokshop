@@ -87,3 +87,13 @@
   from { transform: translateX(30%) scale(1.1); }
   to { transform: translateX(0) scale(1); }
 }
+
+/* ===== Stickers/emojis animados ===== */
+@keyframes ve-sticker-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-14%) scale(1.05); }
+}
+@keyframes ve-sticker-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
