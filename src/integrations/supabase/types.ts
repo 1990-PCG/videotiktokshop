@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -139,6 +139,111 @@ export type Database = {
           },
         ]
       }
+      social_connections: {
+        Row: {
+          access_token: string
+          account_id: string | null
+          account_name: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          metadata: Json
+          platform: string
+          refresh_token: string | null
+          scopes: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          account_id?: string | null
+          account_name?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json
+          platform: string
+          refresh_token?: string | null
+          scopes?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          account_id?: string | null
+          account_name?: string | null
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          metadata?: Json
+          platform?: string
+          refresh_token?: string | null
+          scopes?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      social_publications: {
+        Row: {
+          caption: string
+          connection_id: string | null
+          created_at: string
+          export_id: string | null
+          external_id: string | null
+          id: string
+          metadata: Json
+          platform: string
+          published_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string
+          connection_id?: string | null
+          created_at?: string
+          export_id?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json
+          platform: string
+          published_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caption?: string
+          connection_id?: string | null
+          created_at?: string
+          export_id?: string | null
+          external_id?: string | null
+          id?: string
+          metadata?: Json
+          platform?: string
+          published_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_publications_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "social_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_publications_export_id_fkey"
+            columns: ["export_id"]
+            isOneToOne: false
+            referencedRelation: "video_exports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ui_textos: {
         Row: {
           chave: string
@@ -204,6 +309,101 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      video_exports: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration: number | null
+          error_message: string | null
+          height: number | null
+          id: string
+          mime_type: string
+          project_id: string | null
+          public_url: string | null
+          status: string
+          storage_path: string | null
+          updated_at: string
+          user_id: string
+          width: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration?: number | null
+          error_message?: string | null
+          height?: number | null
+          id?: string
+          mime_type?: string
+          project_id?: string | null
+          public_url?: string | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id: string
+          width?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration?: number | null
+          error_message?: string | null
+          height?: number | null
+          id?: string
+          mime_type?: string
+          project_id?: string | null
+          public_url?: string | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_exports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_projects: {
+        Row: {
+          created_at: string
+          id: string
+          settings: Json
+          source_path: string | null
+          source_url: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          settings?: Json
+          source_path?: string | null
+          source_url?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          settings?: Json
+          source_path?: string | null
+          source_url?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

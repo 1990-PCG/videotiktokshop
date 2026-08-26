@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 
 import { toast } from "sonner";
+
+// Preserves an intended same-origin destination (e.g. the MCP OAuth consent page)
+// across sign-in so the user returns there instead of the dashboard.
+function safeNext(): string | null {
+  if (typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("next");
+  if (!raw) return null;
+  return raw.startsWith("/") && !raw.startsWith("//") ? raw : null;
+}
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -18,6 +27,17 @@ function LandingPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // After an OAuth round-trip, resume the preserved destination once the session exists.
+  useEffect(() => {
+    const next = safeNext();
+    if (!next) return;
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.href = next;
+    });
+  }, []);
+
+
 
   const handleAuth = async (e: React.FormEvent, type: "login" | "signup") => {
     e.preventDefault();
@@ -46,6 +66,8 @@ function LandingPage() {
       }
 
       toast.success(type === "signup" ? "Cadastro realizado!" : "Login realizado!");
+      const next = safeNext();
+      if (next) { window.location.href = next; return; }
       navigate({ to: "/dashboard" as any });
     } catch (error: any) {
       toast.error("Ocorreu um erro inesperado");
@@ -58,7 +80,7 @@ function LandingPage() {
   const handleGoogleLogin = async () => {
     try {
       await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: `${window.location.origin}/${safeNext() ? `?next=${encodeURIComponent(safeNext()!)}` : ""}`,
       });
     } catch (error: any) {
       toast.error(error?.message ?? "Erro ao entrar com Google");

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { exchangeTikTokCode } from "@/lib/social.functions";
+import { completeTikTokOAuth } from "@/lib/social.functions";
 
 export const Route = createFileRoute("/oauth/tiktok/callback")({ component: TikTokCallback });
 
