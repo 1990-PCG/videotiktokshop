@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "sdk_version": "0.28.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://xcwoumisifxhesjoykei.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "video-tiktok-shop",
+      "version": "0.1.0",
+      "title": "Vídeo Tiktok Shop"
+    },
+    "tools": [
+      {
+        "name": "list_products",
+        "title": "Listar produtos",
+        "description": "Lista os produtos cadastrados pelo usuário autenticado (nome, categoria, preço e descrição).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_product",
+        "title": "Criar produto",
+        "description": "Cadastra um novo produto do TikTok Shop para o usuário autenticado.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nome do produto."
+            },
+            "categoria": {
+              "description": "Categoria do produto.",
+              "type": "string"
+            },
+            "preco": {
+              "description": "Preço em reais.",
+              "type": "number",
+              "minimum": 0
+            },
+            "descricao": {
+              "description": "Descrição curta do produto.",
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "nome"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_scripts",
+        "title": "Listar roteiros",
+        "description": "Lista os roteiros de vídeo gerados pelo usuário, opcionalmente filtrados por produto.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "produto_id": {
+              "description": "ID do produto para filtrar os roteiros.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "generate_scripts",
+        "title": "Gerar roteiros com IA",
+        "description": "Gera 5 novos roteiros de vídeo curto com IA para um produto do usuário e salva no app. Retorna os roteiros gerados.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "produto_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "ID do produto (use list_products para descobrir)."
+            },
+            "plataforma": {
+              "default": "TikTok",
+              "description": "Plataforma alvo: TikTok, Instagram, YouTube...",
+              "type": "string"
+            },
+            "publico_alvo": {
+              "default": "Geral",
+              "description": "Público-alvo do vídeo.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "produto_id"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
